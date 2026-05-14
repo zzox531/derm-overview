@@ -19,7 +19,6 @@ class OpenCLIPGame(Game):
 
         # Find padding token dynamically 
         self.pad_token_id = self._find_pad_token()
-        print("PAD_TOKEN: ", self.pad_token_id)
 
         # Run processor once to infer sequence sizing
         self.inputs = self._processor_function([input_image], [input_text])
