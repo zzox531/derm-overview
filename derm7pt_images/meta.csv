@@ -1,0 +1,6 @@
+case_num,label,seven_point_score,pigment_network,streaks,pigmentation,regression_structures,dots_and_globules,blue_whitish_veil,vascular_structures,level_of_diagnostic_difficulty,elevation,location,sex,management,clinic,derm,case_id,notes,filepath
+735,melanoma (less than 0.76 mm),5,atypical,irregular,diffuse irregular,absent,irregular,absent,absent,high,flat,abdomen,female,excision,Fll/Fll131.jpg,Fll/Fll132.jpg,,,derm7pt_images/Fll132.jpg
+541,dermatofibroma,1,typical,absent,localized irregular,absent,regular,absent,absent,low,palpable,lower limbs,female,no further examination,A3l/Acl230.jpg,A3l/Acl231.jpg,,,derm7pt_images/Acl231.jpg
+485,congenital nevus,1,typical,absent,absent,blue areas,regular,absent,absent,medium,palpable,back,male,excision,NCL/Ncl099.jpg,NCL/Ncl100.jpg,,,derm7pt_images/Ncl100.jpg
+440,clark nevus,2,typical,absent,absent,blue areas,irregular,absent,absent,medium,palpable,abdomen,female,excision,Fhl/Fhl033.jpg,Fhl/Fhl034.jpg,,,derm7pt_images/Fhl034.jpg
+441,clark nevus,2,typical,regular,diffuse irregular,absent,irregular,absent,absent,high,palpable,lower limbs,male,excision,Fhl/Fhl037.jpg,Fhl/Fhl038.jpg,,,derm7pt_images/Fhl038.jpg
