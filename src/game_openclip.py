@@ -126,7 +126,16 @@ class OpenCLIPGame(Game):
             
             with torch.no_grad():
                 # Handling custom OpenCLIP forwarding structure 
-                image_features, text_features, logit_scale = self.model(*inputs)
+                model_out = self.model(*inputs)
+                
+                # CoCa returns a dict, standard CLIP returns a tuple
+                if isinstance(model_out, dict):
+                    image_features = model_out["image_features"]
+                    text_features = model_out["text_features"]
+                    logit_scale = model_out.get("logit_scale", None)
+                else:
+                    # Some standard open_clip models might return more than 3, just grab the first 3
+                    image_features, text_features, logit_scale = model_out[:3]
                 
                 # Normalize exactly like open_clip does 
                 image_features = image_features / image_features.norm(dim=1, keepdim=True)
@@ -200,7 +209,18 @@ class OpenCLIPGame(Game):
                 else:
                     break
                 with torch.no_grad():
-                    image_features, text_features, logit_scale = self.model(*inputs)
+                    # Handle models independently so CoCa's decoder doesn't crash on mismatched batches
+                    image_out = self.model.encode_image(inputs[0])
+                    text_out = self.model.encode_text(inputs[1])
+                    
+                    # CoCa's encode_text might return a tuple, but standard CLIP doesn't always
+                    image_features = image_out[0] if isinstance(image_out, tuple) else image_out
+                    text_features = text_out[0] if isinstance(text_out, tuple) else text_out
+                    
+                    if hasattr(self.model, "logit_scale"):
+                        logit_scale = self.model.logit_scale.exp()
+                    else:
+                        logit_scale = None
                     
                     image_features = image_features / image_features.norm(dim=1, keepdim=True)
                     text_features = text_features / text_features.norm(dim=1, keepdim=True)
