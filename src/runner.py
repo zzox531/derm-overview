@@ -67,6 +67,7 @@ def explain(
     random_state: int = 42,
     top_k_plot: int = 13,
     plot: bool = True,
+    output_dir=None,
 ):
     """Run FIxLIP explanations for every (sample, target) yielded by the task."""
     out = []
@@ -130,7 +131,16 @@ def explain(
             if item.target_class:
                 plt.title(f"'{item.target_class}'", pad=20)
             plt.tight_layout(pad=0.15)
-            plt.show()
+            
+            if output_dir is not None:
+                from pathlib import Path
+                out_path = Path(output_dir) / f"{sample.identifier.replace('/', '_')}.png"
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                plt.savefig(out_path, bbox_inches="tight", dpi=150)
+            else:
+                plt.show()
+            plt.close("all")
+            
             plt.close("all")
 
         del game, approximator, iv
