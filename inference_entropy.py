@@ -27,6 +27,7 @@ Insertion / deletion behaviour
 
   Standalone  (--tasks ins_del):
     AttributionValues are estimated via Monte Carlo (budget = --budget-ins-del).
+    Runs on BOTH HAM_IMAGES (zero-shot prompts) and DERM1M_ENTRIES (captions).
 
   Combined  (--tasks caption ins_del  OR  --tasks zeroshot ins_del):
     FIxLIP interaction values from the caption / zeroshot run are forwarded
@@ -140,7 +141,7 @@ MODELS = [
 ]
 
 DERM1M_ENTRIES = [
-    # {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
+    {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
     # {"filename": "IIYI/2281_1.png", "index": 126},
 ]
 
@@ -156,7 +157,7 @@ HAM7 = [
 
 HAM_IMAGES = [
     "ham_images/sample_0_melanocytic_Nevi.jpg",
-    "ham_images/sample_1_melanoma.jpg",
+    "ham_images/sample_1_melanocytic_Nevi.jpg",
     "ham_images/sample_2_melanoma.jpg",
     "ham_images/sample_3_melanoma.jpg",
     "ham_images/sample_4_melanocytic_Nevi.jpg",
@@ -244,50 +245,88 @@ def main() -> None:
         logger.info("Logged in to HuggingFace Hub.")
 
     # --- Build tasks ---
-    # Determine which base tasks (caption / zeroshot) are explicitly requested.
-    # If only "ins_del" is listed, we need at least one sample source — we
-    # default to the HAM images in caption mode.
     run_caption  = "caption"  in tasks
     run_zeroshot = "zeroshot" in tasks
     run_ins_del_standalone = do_ins_del and not run_caption and not run_zeroshot
 
-    caption_task  = None
-    zeroshot_task = None
-    ins_del_task  = None
+    caption_task          = None
+    zeroshot_task         = None
+    ins_del_tasks: list   = []  # may hold one or two standalone ins/del tasks
 
-    if run_caption:
-        logger.info("Loading Derm1M dataset for caption task")
+    # Caption samples (Derm1M) — loaded if caption OR standalone ins/del is needed
+    # and DERM1M_ENTRIES is non-empty.
+    caption_samples = None
+    if (run_caption or run_ins_del_standalone) and len(DERM1M_ENTRIES) > 0:
+        logger.info("Loading Derm1M dataset")
         ds = load_dataset("redlessone/Derm1M")
         caption_samples = from_derm1m(ds, DERM1M_ENTRIES, image_root=args.image_root)
-        caption_task = CaptionTask(samples=caption_samples)
-        logger.info(f"Caption task ready — {len(caption_samples)} sample(s).")
+
+    # Zero-shot samples (HAM) — loaded if zeroshot OR standalone ins/del is needed.
+    zs_samples = None
+    if (run_zeroshot or run_ins_del_standalone) and len(HAM_IMAGES) > 0:
+        zs_samples = from_image_folder(HAM_IMAGES)
+
+    if run_caption:
+        if caption_samples is None or len(caption_samples) == 0:
+            logger.warning("Caption task requested but DERM1M_ENTRIES is empty — skipping.")
+        else:
+            caption_task = CaptionTask(samples=caption_samples)
+            logger.info(f"Caption task ready — {len(caption_samples)} sample(s).")
 
     if run_zeroshot:
-        zs_samples    = from_image_folder(HAM_IMAGES)
-        zeroshot_task = ZeroShotTask(
-            samples=zs_samples,
-            class_names=HAM7,
-            prompt_template=lambda c: f"This image shows a case of {c}",
-            explain_classes="top1",
-            top_k=3,
-        )
-        logger.info(f"Zero-shot task ready — {len(zs_samples)} sample(s), {len(HAM7)} classes.")
+        if zs_samples is None or len(zs_samples) == 0:
+            logger.warning("Zero-shot task requested but HAM_IMAGES is empty — skipping.")
+        else:
+            zeroshot_task = ZeroShotTask(
+                samples=zs_samples,
+                class_names=HAM7,
+                prompt_template=lambda c: f"This image shows a case of {c}",
+                explain_classes="top1",
+                top_k=3,
+            )
+            logger.info(
+                f"Zero-shot task ready — {len(zs_samples)} sample(s), {len(HAM7)} classes."
+            )
 
     if run_ins_del_standalone:
-        # Standalone ins/del: use HAM images with zero-shot class prompts.
-        zs_samples   = from_image_folder(HAM_IMAGES)
-        ins_del_task = InsDelTask(
-            samples=zs_samples,
-            class_names=HAM7,
-            prompt_template=lambda c: f"This image shows a case of {c}",
-            explain_classes="top1",
-            budget=args.budget_ins_del,
-            p=args.ins_del_p,
-        )
-        logger.info(
-            f"Standalone ins/del task ready — {len(zs_samples)} sample(s).  "
-            f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
-        )
+        # Standalone ins/del runs over BOTH HAM_IMAGES (zero-shot prompts)
+        # and DERM1M_ENTRIES (captions), depending on which are populated.
+        if zs_samples is not None and len(zs_samples) > 0:
+            ins_del_tasks.append(
+                InsDelTask(
+                    samples=zs_samples,
+                    class_names=HAM7,
+                    prompt_template=lambda c: f"This image shows a case of {c}",
+                    explain_classes="top1",
+                    budget=args.budget_ins_del,
+                    p=args.ins_del_p,
+                )
+            )
+            logger.info(
+                f"Standalone ins/del (HAM/zero-shot) ready — {len(zs_samples)} sample(s).  "
+                f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
+            )
+
+        if caption_samples is not None and len(caption_samples) > 0:
+            ins_del_tasks.append(
+                InsDelTask(
+                    samples=caption_samples,
+                    budget=args.budget_ins_del,
+                    p=args.ins_del_p,
+                )
+            )
+            logger.info(
+                f"Standalone ins/del (Derm1M/caption) ready — "
+                f"{len(caption_samples)} sample(s).  "
+                f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
+            )
+
+        if not ins_del_tasks:
+            logger.error(
+                "Standalone ins_del requested but both HAM_IMAGES and "
+                "DERM1M_ENTRIES are empty. Nothing to do."
+            )
+            sys.exit(1)
 
     # --- Run models ---
     all_results: dict = {}
@@ -353,25 +392,29 @@ def main() -> None:
             logger.info(f"  Zero-shot results saved → {out_dirs['zeroshot']}")
 
         # ------------------------------------------------------------------
-        # Standalone ins/del task
+        # Standalone ins/del task(s) — run over HAM_IMAGES and/or DERM1M_ENTRIES
         # ------------------------------------------------------------------
-        if ins_del_task is not None:
-            logger.info(
-                f"  Running standalone ins/del task "
-                f"(budget={args.budget_ins_del}, p={args.ins_del_p})"
-            )
-            id_results = ins_del_task.run(
-                model=model,
-                output_dir=out_dirs["ins_del"],
-                batch_size=args.ins_del_batch_size,
-            )
-            all_results[model_name]["ins_del"] = id_results
-            logger.info(f"  Ins/del results saved → {out_dirs['ins_del']}")
-            for r in id_results:
+        if ins_del_tasks:
+            combined_id_results = []
+            for idx, id_task in enumerate(ins_del_tasks):
                 logger.info(
-                    f"    {r['identifier']}: AID={r['aid']:.4f}"
-                    f"  (full={r['v_full']:.4f}, empty={r['v_empty']:.4f})"
+                    f"  Running standalone ins/del task [{idx + 1}/{len(ins_del_tasks)}] "
+                    f"(budget={args.budget_ins_del}, p={args.ins_del_p}, "
+                    f"n_samples={len(id_task.samples)})"
                 )
+                id_results = id_task.run(
+                    model=model,
+                    output_dir=out_dirs["ins_del"],
+                    batch_size=args.ins_del_batch_size,
+                )
+                combined_id_results.extend(id_results)
+                for r in id_results:
+                    logger.info(
+                        f"    {r['identifier']}: AID={r['aid']:.4f}"
+                        f"  (full={r['v_full']:.4f}, empty={r['v_empty']:.4f})"
+                    )
+            all_results[model_name]["ins_del"] = combined_id_results
+            logger.info(f"  Ins/del results saved → {out_dirs['ins_del']}")
 
         # --- GPU cleanup ---
         del model
