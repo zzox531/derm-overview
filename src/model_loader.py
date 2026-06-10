@@ -73,13 +73,17 @@ def load_model(
     """Load a CLIP-like model from either HuggingFace or OpenCLIP."""
     if backend == "huggingface":
         model = AutoModel.from_pretrained(name).to(device).eval()
-        processor = AutoProcessor.from_pretrained(name)
+        try:
+            processor = AutoProcessor.from_pretrained(name, use_fast=False)
+        except TypeError:
+            processor = AutoProcessor.from_pretrained(name)
+        tokenizer = AutoTokenizer.from_pretrained(name)
         return LoadedModel(
             name=name,
             backend=backend,
             model=model,
             processor=processor,
-            tokenizer=processor,
+            tokenizer=tokenizer,
             image_mean=tuple(processor.image_processor.image_mean),
             image_std=tuple(processor.image_processor.image_std),
             patch_size=_infer_patch_size(model),

@@ -69,7 +69,14 @@ class ZeroShotTask(Task):
 
         results = []
         for sample in self.samples:
-            img_tensor = model.processor(sample.image).unsqueeze(0).to(device)
+            if model.backend == "huggingface":
+                img_inputs = model.processor(
+                    images=sample.image,
+                    return_tensors="pt",
+                ).to(device)
+                img_tensor = img_inputs["pixel_values"]
+            else:
+                img_tensor = model.processor(sample.image).unsqueeze(0).to(device)
             with torch.no_grad(), torch.autocast(device):
                 img_feat = model.encode_image(img_tensor)
                 img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
