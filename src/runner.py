@@ -1,4 +1,12 @@
-"""Runs FIxLIP explanations across (model, task) combinations."""
+"""Runs FIxLIP explanations across (model, task) combinations.
+
+Changes from original
+---------------------
+* After ``approximator.approximate_crossmodal()`` the interaction values are
+  optionally forwarded to ``src.ins_del.run_and_save()`` when the caller
+  passes ``ins_del_output_dir``.  This is the only structural change; all
+  existing behaviour is preserved when the argument is omitted.
+"""
 import gc
 import torch
 import matplotlib.pyplot as plt
@@ -9,6 +17,8 @@ import src.game_huggingface
 import src.game_openclip
 from src.model_loader import LoadedModel
 from src.tasks import Task, InferenceResult
+from pathlib import Path
+from typing import Optional
 
 
 def _build_game(model: LoadedModel, sample, batch_size: int = 32):
@@ -68,8 +78,27 @@ def explain(
     top_k_plot: int = 13,
     plot: bool = True,
     output_dir=None,
+    # --- new: ins/del ---
+    ins_del_output_dir: Optional[Path] = None,
+    ins_del_batch_size: int = 64,
 ):
-    """Run FIxLIP explanations for every (sample, target) yielded by the task."""
+    """Run FIxLIP explanations for every (sample, target) yielded by the task.
+
+    Parameters (additions only — all originals unchanged)
+    -------------------------------------------------------
+    ins_del_output_dir : Path or None
+        When provided, insertion/deletion curves are computed from the FIxLIP
+        interaction values and saved to this directory after each sample.
+        Pass ``None`` (default) to skip the experiment entirely.
+    ins_del_batch_size : int
+        Batch size for the masked-image scoring inside the ins/del sweep.
+    """
+    # Lazy import so that the module is only required when ins/del is active.
+    if ins_del_output_dir is not None:
+        import src.ins_del as _ins_del
+        ins_del_output_dir = Path(ins_del_output_dir)
+        ins_del_output_dir.mkdir(parents=True, exist_ok=True)
+
     out = []
     for item in task.iter_samples(model):
         sample = item.sample
@@ -102,6 +131,26 @@ def explain(
         }
         out.append(item_result)
 
+        # ------------------------------------------------------------------ #
+        # Insertion / deletion experiment (new — only when dir is given)      #
+        # ------------------------------------------------------------------ #
+        if ins_del_output_dir is not None:
+            _ins_del.run_and_save(
+                item=item,
+                model=model,
+                iv=iv,
+                output_dir=ins_del_output_dir,
+                batch_size=ins_del_batch_size,
+                # budget / p / random_state only used if iv is None,
+                # but passed for completeness
+                budget=budget,
+                p=p,
+                random_state=random_state,
+            )
+
+        # ------------------------------------------------------------------ #
+        # Original saliency plotting (unchanged)                              #
+        # ------------------------------------------------------------------ #
         if plot:
             tokens = _extract_text_tokens(model, game, sample.text)
             if model.backend == "huggingface":
@@ -131,16 +180,15 @@ def explain(
             if item.target_class:
                 plt.title(f"'{item.target_class}'", pad=20)
             plt.tight_layout(pad=0.15)
-            
+
             if output_dir is not None:
-                from pathlib import Path
                 out_path = Path(output_dir) / f"{sample.identifier.replace('/', '_')}.png"
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 plt.savefig(out_path, bbox_inches="tight", dpi=150)
             else:
                 plt.show()
             plt.close("all")
-            
+
             plt.close("all")
 
         del game, approximator, iv
