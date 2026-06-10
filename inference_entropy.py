@@ -1,0 +1,401 @@
+"""
+run_inference.py — CLIP-based dermatology inference script.
+
+Usage:
+    python run_inference.py [--tasks caption zeroshot ins_del] \
+                            [--budget-caption 1024] \
+                            [--budget-zeroshot 256] \
+                            [--budget-ins-del 1024] \
+                            [--ins-del-batch-size 64] \
+                            [--ins-del-p 0.5]
+
+Outputs are saved under:
+    results/
+    ├── caption/
+    │   └── <model_name>/   (FIxLIP saliency maps)
+    ├── zeroshot/
+    │   └── <model_name>/   (FIxLIP saliency maps)
+    ├── ins_del/
+    │   └── <model_name>/   (*_curves.png, *_curves.csv, *_attr.npy)
+    └── logs/
+        └── run_<timestamp>.log
+
+Insertion / deletion behaviour
+-------------------------------
+* "ins_del" can be requested as a standalone task OR combined with
+  "caption" / "zeroshot".
+
+  Standalone  (--tasks ins_del):
+    AttributionValues are estimated via Monte Carlo (budget = --budget-ins-del).
+
+  Combined  (--tasks caption ins_del  OR  --tasks zeroshot ins_del):
+    FIxLIP interaction values from the caption / zeroshot run are forwarded
+    directly to the ins/del sweep — no extra attribution budget is spent.
+    This is the recommended mode.
+"""
+
+import argparse
+import gc
+import logging
+import os
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import torch
+
+# ---------------------------------------------------------------------------
+# Helpers (unchanged from original)
+# ---------------------------------------------------------------------------
+
+def setup_logging(log_dir: Path) -> logging.Logger:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file  = log_dir / f"run_{timestamp}.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s  %(levelname)-8s  %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_file),
+        ],
+    )
+    return logging.getLogger(__name__)
+
+
+def cuda_check(logger: logging.Logger) -> torch.device:
+    logger.info("=" * 60)
+    logger.info("DEVICE CHECK")
+    logger.info("=" * 60)
+    logger.info(f"PyTorch version : {torch.__version__}")
+    if torch.cuda.is_available():
+        n = torch.cuda.device_count()
+        logger.info(f"CUDA available  : YES  ({n} device{'s' if n > 1 else ''})")
+        for i in range(n):
+            props   = torch.cuda.get_device_properties(i)
+            mem_gb  = props.total_memory / 1024 ** 3
+            logger.info(
+                f"  GPU {i}: {props.name}  |  "
+                f"Compute {props.major}.{props.minor}  |  "
+                f"VRAM {mem_gb:.1f} GB"
+            )
+        device = torch.device("cuda")
+    else:
+        logger.warning("CUDA available  : NO  — running on CPU (inference will be slow)")
+        device = torch.device("cpu")
+    logger.info(f"Active device   : {device}")
+    logger.info("=" * 60)
+    return device
+
+
+def log_gpu_memory(logger: logging.Logger, label: str = "") -> None:
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / 1024 ** 3
+        reserved  = torch.cuda.memory_reserved()  / 1024 ** 3
+        logger.info(
+            f"  GPU memory {label}: "
+            f"{allocated:.2f} GB allocated, {reserved:.2f} GB reserved"
+        )
+
+
+def make_output_dirs(base: Path, model_name: str, tasks: list[str]) -> dict[str, Path]:
+    safe = model_name.replace("/", "_").replace(":", "_").replace(" ", "_")
+    dirs = {}
+    for task in tasks:
+        d = base / task / safe
+        d.mkdir(parents=True, exist_ok=True)
+        dirs[task] = d
+    return dirs
+
+
+def release_results(results: list) -> None:
+    for item in results:
+        iv = item.get("interaction_values")
+        if iv is not None and hasattr(iv, "cpu"):
+            item["interaction_values"] = iv.cpu()
+
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+MODELS = [
+    # {
+    #     "name": "coca_ViT-B-32",
+    #     "backend": "open_clip",
+    #     "pretrained": "laion2b_s13b_b90k",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
+    # },
+    {
+        "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+        "backend": "open_clip",
+        "hf_tokenizer_name": (
+            "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+        ),
+        "budget_caption":  256,
+        "budget_zeroshot": 64,
+        # ins_del budget is separate; omit to inherit --budget-ins-del
+    },
+]
+
+DERM1M_ENTRIES = [
+    # {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
+    # {"filename": "IIYI/2281_1.png", "index": 126},
+]
+
+HAM7 = [
+    "melanocytic nevus",
+    "melanoma",
+    "basal cell carcinoma",
+    "benign keratosis",
+    "actinic keratosis",
+    "vascular lesion",
+    "dermatofibroma",
+]
+
+HAM_IMAGES = [
+    "ham_images/sample_0_melanocytic_Nevi.jpg",
+    "ham_images/sample_1_melanoma.jpg",
+    "ham_images/sample_2_melanoma.jpg",
+    "ham_images/sample_3_melanoma.jpg",
+    "ham_images/sample_4_melanocytic_Nevi.jpg",
+]
+
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run CLIP-based dermatology inference (caption + zero-shot + ins/del)."
+    )
+    parser.add_argument(
+        "--tasks",
+        nargs="+",
+        choices=["caption", "zeroshot", "ins_del"],
+        default=["caption", "zeroshot"],
+        help=(
+            "Which tasks to run (default: caption zeroshot).  "
+            "Add 'ins_del' to also compute insertion/deletion curves.  "
+            "Combined modes (e.g. 'caption ins_del') reuse FIxLIP values; "
+            "standalone 'ins_del' estimates attributions via Monte Carlo."
+        ),
+    )
+    parser.add_argument("--budget-caption",   type=int, default=None,
+                        help="Override FIxLIP budget for caption task.")
+    parser.add_argument("--budget-zeroshot",  type=int, default=None,
+                        help="Override FIxLIP budget for zero-shot task.")
+    parser.add_argument("--budget-ins-del",   type=int, default=1024,
+                        help="Attribution budget for standalone ins/del (default: 1024).")
+    parser.add_argument("--ins-del-batch-size", type=int, default=64,
+                        help="Batch size for masked-image scoring in ins/del sweep.")
+    parser.add_argument("--ins-del-p",         type=float, default=0.5,
+                        help="Banzhaf masking probability for standalone ins/del (default: 0.5).")
+    parser.add_argument("--output-dir",  type=Path, default=Path("results"),
+                        help="Root directory for all outputs (default: ./results).")
+    parser.add_argument("--image-root",  type=str, default="derm_train_images",
+                        help="Root directory for Derm1M images.")
+    return parser.parse_args()
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    args   = parse_args()
+    tasks  = args.tasks
+    do_ins_del = "ins_del" in tasks
+
+    # --- Logging ---
+    logger = setup_logging(args.output_dir / "logs")
+    logger.info("Starting inference run")
+    logger.info(f"Tasks        : {tasks}")
+    logger.info(f"Output dir   : {args.output_dir.resolve()}")
+
+    # --- CUDA check ---
+    device = cuda_check(logger)  # noqa: F841 (used inside loaded model)
+
+    # --- Lazy imports ---
+    try:
+        from huggingface_hub import login
+        from datasets import load_dataset
+
+        from src.model_loader import load_model
+        from src.tasks import CaptionTask, ZeroShotTask
+        from src.datasets_adapter import from_derm1m, from_image_folder
+        from src.runner import explain
+    except ImportError as exc:
+        logger.error(f"Import failed: {exc}")
+        logger.error("Make sure dependencies are installed and src/ is on PYTHONPATH.")
+        sys.exit(1)
+
+    if do_ins_del:
+        from src.ins_del import InsDelTask  # noqa: F401 (used below)
+
+    # --- HuggingFace login ---
+    hf_token = os.getenv("HF_TOKEN")
+    if not hf_token:
+        logger.warning("HF_TOKEN not set; private datasets may fail.")
+    else:
+        login(token=hf_token)
+        logger.info("Logged in to HuggingFace Hub.")
+
+    # --- Build tasks ---
+    # Determine which base tasks (caption / zeroshot) are explicitly requested.
+    # If only "ins_del" is listed, we need at least one sample source — we
+    # default to the HAM images in caption mode.
+    run_caption  = "caption"  in tasks
+    run_zeroshot = "zeroshot" in tasks
+    run_ins_del_standalone = do_ins_del and not run_caption and not run_zeroshot
+
+    caption_task  = None
+    zeroshot_task = None
+    ins_del_task  = None
+
+    if run_caption:
+        logger.info("Loading Derm1M dataset for caption task")
+        ds = load_dataset("redlessone/Derm1M")
+        caption_samples = from_derm1m(ds, DERM1M_ENTRIES, image_root=args.image_root)
+        caption_task = CaptionTask(samples=caption_samples)
+        logger.info(f"Caption task ready — {len(caption_samples)} sample(s).")
+
+    if run_zeroshot:
+        zs_samples    = from_image_folder(HAM_IMAGES)
+        zeroshot_task = ZeroShotTask(
+            samples=zs_samples,
+            class_names=HAM7,
+            prompt_template=lambda c: f"This image shows a case of {c}",
+            explain_classes="top1",
+            top_k=3,
+        )
+        logger.info(f"Zero-shot task ready — {len(zs_samples)} sample(s), {len(HAM7)} classes.")
+
+    if run_ins_del_standalone:
+        # Standalone ins/del: use HAM images with zero-shot class prompts.
+        zs_samples   = from_image_folder(HAM_IMAGES)
+        ins_del_task = InsDelTask(
+            samples=zs_samples,
+            class_names=HAM7,
+            prompt_template=lambda c: f"This image shows a case of {c}",
+            explain_classes="top1",
+            budget=args.budget_ins_del,
+            p=args.ins_del_p,
+        )
+        logger.info(
+            f"Standalone ins/del task ready — {len(zs_samples)} sample(s).  "
+            f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
+        )
+
+    # --- Run models ---
+    all_results: dict = {}
+
+    for cfg in MODELS:
+        model_name      = cfg["name"]
+        budget_caption  = args.budget_caption  or cfg.get("budget_caption",  2 ** 10)
+        budget_zeroshot = args.budget_zeroshot or cfg.get("budget_zeroshot", 2 ** 8)
+        loader_kwargs   = {k: v for k, v in cfg.items()
+                           if k not in ("budget_caption", "budget_zeroshot")}
+
+        logger.info(f"\n{'─' * 60}")
+        logger.info(f"Loading model: {model_name}")
+        log_gpu_memory(logger, "before load")
+
+        model    = load_model(**loader_kwargs)
+        out_dirs = make_output_dirs(args.output_dir, model_name, tasks)
+        all_results[model_name] = {}
+
+        # ins/del output dir (used when combined with caption/zeroshot)
+        ins_del_dir = out_dirs.get("ins_del") if do_ins_del else None
+
+        # ------------------------------------------------------------------
+        # Caption task  (+ optional ins/del curves from the same IV)
+        # ------------------------------------------------------------------
+        if caption_task is not None:
+            logger.info(
+                f"  Running caption task (budget={budget_caption}"
+                + (f", ins_del -> {ins_del_dir}" if ins_del_dir else "")
+                + ")"
+            )
+            caption_results = explain(
+                model,
+                caption_task,
+                budget=budget_caption,
+                output_dir=out_dirs["caption"],
+                ins_del_output_dir=ins_del_dir,
+                ins_del_batch_size=args.ins_del_batch_size,
+            )
+            release_results(caption_results)
+            all_results[model_name]["caption"] = caption_results
+            logger.info(f"  Caption results saved → {out_dirs['caption']}")
+
+        # ------------------------------------------------------------------
+        # Zero-shot task  (+ optional ins/del curves from the same IV)
+        # ------------------------------------------------------------------
+        if zeroshot_task is not None:
+            logger.info(
+                f"  Running zero-shot task (budget={budget_zeroshot}"
+                + (f", ins_del -> {ins_del_dir}" if ins_del_dir else "")
+                + ")"
+            )
+            zs_results = explain(
+                model,
+                zeroshot_task,
+                budget=budget_zeroshot,
+                output_dir=out_dirs["zeroshot"],
+                ins_del_output_dir=ins_del_dir,
+                ins_del_batch_size=args.ins_del_batch_size,
+            )
+            release_results(zs_results)
+            all_results[model_name]["zeroshot"] = zs_results
+            logger.info(f"  Zero-shot results saved → {out_dirs['zeroshot']}")
+
+        # ------------------------------------------------------------------
+        # Standalone ins/del task
+        # ------------------------------------------------------------------
+        if ins_del_task is not None:
+            logger.info(
+                f"  Running standalone ins/del task "
+                f"(budget={args.budget_ins_del}, p={args.ins_del_p})"
+            )
+            id_results = ins_del_task.run(
+                model=model,
+                output_dir=out_dirs["ins_del"],
+                batch_size=args.ins_del_batch_size,
+            )
+            all_results[model_name]["ins_del"] = id_results
+            logger.info(f"  Ins/del results saved → {out_dirs['ins_del']}")
+            for r in id_results:
+                logger.info(
+                    f"    {r['identifier']}: AID={r['aid']:.4f}"
+                    f"  (full={r['v_full']:.4f}, empty={r['v_empty']:.4f})"
+                )
+
+        # --- GPU cleanup ---
+        del model
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+        log_gpu_memory(logger, "after cleanup")
+
+    # --- Summary ---
+    logger.info("\nAll models done.")
+    for model_name, task_dict in all_results.items():
+        for task_name, result in task_dict.items():
+            if task_name == "ins_del" and isinstance(result, list):
+                for r in result:
+                    logger.info(
+                        f"  [{model_name}]  ins_del  {r.get('identifier', '?')}: "
+                        f"AID={r.get('aid', '?'):.4f}"
+                    )
+            else:
+                logger.info(f"  [{model_name}]  {task_name}: {len(result)} item(s)")
+
+    logger.info("Inference run complete.")
+
+
+if __name__ == "__main__":
+    main()

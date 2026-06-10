@@ -1,4 +1,4 @@
-name: dermlip
+name: dermlip_entropy
 channels:
   - conda-forge
   - defaults
@@ -22,11 +22,11 @@ dependencies:
   - overrides
   - pip
   - pip:
-      - --index-url=https://download.pytorch.org/whl/cu128
-      - torch>=2.6.0
-      - torchvision>=0.21.0
+      - --index-url=https://download.pytorch.org/whl/cu124
+      - torch==2.6.0+cu124
+      - torchvision==0.21.0+cu124
       - --extra-index-url=https://pypi.org/simple
+      - open-clip-torch
       - git+https://github.com/openai/clip.git
       - git+https://github.com/mmschlk/shapiq.git
       - sentencepiece==0.2.0
-`
