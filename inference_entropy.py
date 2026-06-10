@@ -128,21 +128,21 @@ MODELS = [
     #     "budget_caption": 1024,
     #     "budget_zeroshot": 256,
     # },
-    {
-        "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        "backend": "open_clip",
-        "hf_tokenizer_name": (
-            "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
-        ),
-        "budget_caption":  256,
-        "budget_zeroshot": 64,
-        # ins_del budget is separate; omit to inherit --budget-ins-del
-    },
     # {
-    #     "name": "suinleelab/monet",
-    #     "backend": "huggingface",
-    #     "budget_zeroshot": 64,
+        # "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+        # "backend": "open_clip",
+        # "hf_tokenizer_name": (
+        #     "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+        # ),
+        # "budget_caption":  256,
+        # "budget_zeroshot": 64,
+        # ins_del budget is separate; omit to inherit --budget-ins-del
     # },
+    {
+        "name": "suinleelab/monet",
+        "backend": "huggingface",
+        "budget_zeroshot": 64,
+    },
 ]
 
 DERM1M_ENTRIES = [
