@@ -540,6 +540,9 @@ def plot_image_and_text_together(
     line_counter = 0
     x_pos = line_start + left_margins[line_counter]
     y_pos = y0 - line_height * (1.0 + margin)
+    
+    print("Text: ", text, "Word dimensions:", word_dimensions)
+    
     for i, (word, dim) in enumerate(zip(text, word_dimensions)):
         width, height = dim
         player = (n_image_players + i,)

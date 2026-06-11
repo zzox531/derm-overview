@@ -33,6 +33,25 @@ class LoadedModel:
         if self.backend == "huggingface":
             return self.model.get_text_features(**tokens)
         return self.model.encode_text(tokens)
+    
+    def decode_tokens(self, token_ids) -> list[str]:
+        """Decode a sequence of token IDs to per-token strings."""
+        if isinstance(self.tokenizer, _CustomHFTokenizer):
+            # HF-wrapped tokenizer (BiomedCLIP etc.) — convert each id individually
+            return [self.tokenizer.tk.convert_ids_to_tokens(int(i)) for i in token_ids]
+
+        # open_clip tokenizer — check if it's SentencePiece or BPE
+        inner = getattr(self.tokenizer, "tokenizer", None)  # unwrap open_clip wrapper
+
+        if inner is not None and hasattr(inner, "decoder"):
+            # SentencePiece (SigLIP, etc.)
+            return [inner.decoder.sp_model.id_to_piece(int(i)) for i in token_ids]
+
+        # Standard BPE (original ViT-B-16, CoCa, etc.)
+        return [
+            self.tokenizer.decoder.get(int(i), str(int(i)))
+            for i in token_ids
+        ]
 
 
 class _CustomHFTokenizer:
@@ -52,8 +71,24 @@ class _CustomHFTokenizer:
             truncation=True,
         ).input_ids
 
-    def decode(self, token_ids):
-        return self.tk.decode(token_ids)
+    def decode(self, token_ids) -> list[str]:
+        tokens = self.tk.convert_ids_to_tokens(
+            [int(i) for i in token_ids],
+            skip_special_tokens=True,
+        )
+        # Filter padding only, keep EOS and actual content
+        pad_id = self.tk.pad_token_id
+        return [
+            t.replace("</w>", "")
+            .replace("▁", " ")
+            .replace("<|startoftext|>", "")
+            .replace("<|endoftext|>", "")
+            .strip()
+            for t in tokens
+            if isinstance(t, str)
+            and t not in ("<pad>", "</s>", "<s>", "[CLS]", "[SEP]", "▁")  # ← add "▁"
+            and t.strip() != ""
+        ]
 
 
 def _infer_patch_size(model) -> int:
@@ -69,21 +104,18 @@ def load_model(
     pretrained: Optional[str] = None,
     device: str = "cuda",
     hf_tokenizer_name: Optional[str] = None,
+    hf_tokenizer_max_length: int = 256,
 ) -> LoadedModel:
     """Load a CLIP-like model from either HuggingFace or OpenCLIP."""
     if backend == "huggingface":
         model = AutoModel.from_pretrained(name).to(device).eval()
-        try:
-            processor = AutoProcessor.from_pretrained(name, use_fast=False)
-        except TypeError:
-            processor = AutoProcessor.from_pretrained(name)
-        tokenizer = AutoTokenizer.from_pretrained(name)
+        processor = AutoProcessor.from_pretrained(name)
         return LoadedModel(
             name=name,
             backend=backend,
             model=model,
             processor=processor,
-            tokenizer=tokenizer,
+            tokenizer=processor,
             image_mean=tuple(processor.image_processor.image_mean),
             image_std=tuple(processor.image_processor.image_std),
             patch_size=_infer_patch_size(model),
@@ -91,6 +123,9 @@ def load_model(
         )
 
     if backend == "open_clip":
+        if name.startswith("hf-hub:"):
+            model, _, processor = open_clip.create_model_and_transforms(name)
+            tokenizer = open_clip.get_tokenizer(name)
         if pretrained:
             model, _, processor = open_clip.create_model_and_transforms(
                 name, pretrained=pretrained
@@ -101,7 +136,8 @@ def load_model(
 
         if hf_tokenizer_name:
             tokenizer = _CustomHFTokenizer(
-                AutoTokenizer.from_pretrained(hf_tokenizer_name)
+                AutoTokenizer.from_pretrained(hf_tokenizer_name),
+                max_length=hf_tokenizer_max_length,
             )
         else:
             tokenizer = open_clip.get_tokenizer(name)
