@@ -5,11 +5,11 @@ from PIL import Image
 from src.tasks import SampleInput
 
 
-def from_derm1m(ds, entries: List[dict], image_root: str) -> List[SampleInput]:
+def from_derm1m(ds, entries: List[dict]) -> List[SampleInput]:
     """entries: list of {"filename": str, "index": int}."""
     samples = []
     for e in entries:
-        path = Path(image_root) / e["filename"]
+        path = Path("derm_train_images") / e["filename"]
         if not path.exists():
             print(f"[!] Missing: {path}")
             continue

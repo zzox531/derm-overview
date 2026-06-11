@@ -8,7 +8,7 @@ src.utils.convert_iv_to_first_order for comparison.
 
 Metrics
 -------
-AID  (Insertion vs Deletion, first-order only):
+AID  (Insertion vs Deletion):
     mean(insertion_MIF_norm − deletion_MIF_norm)
     Higher is better.
 
@@ -175,6 +175,36 @@ def _build_mif_from_attributions(
     )
 
     return coalition_matrix_mif
+
+
+def _build_mif_ins_from_attributions(
+    attribution_values: np.ndarray,
+) -> np.ndarray:
+    """Build MIF insertion coalition matrix from 1-D attribution values.
+
+    MIF insertion: starts empty, adds highest-attribution patches first.
+    Row i has the top-i patches active (by descending attribution).
+    Final row is the full coalition (all patches active).
+    """
+    attribution_values = np.asarray(attribution_values).reshape(-1)
+    n = len(attribution_values)
+
+    # Indices sorted from highest to lowest attribution
+    order = np.argsort(attribution_values)[::-1]
+
+    rows = []
+    active = np.zeros(n, dtype=bool)
+    for idx in order:
+        active = active.copy()
+        active[idx] = True
+        rows.append(active.copy())
+
+    # Ensure the final row is exactly full (guards against float ties)
+    rows[-1] = np.ones(n, dtype=bool)
+
+    return np.stack(rows, axis=0)
+
+
 # ---------------------------------------------------------------------------
 # Attribution via Monte Carlo (fallback when no IV available)
 # ---------------------------------------------------------------------------
@@ -307,6 +337,8 @@ def run_insertion_deletion(
         "v_full": v_full,
         "v_empty": v_empty,
     }
+
+
 # ---------------------------------------------------------------------------
 # Core experiment — second order (clique-based)
 # ---------------------------------------------------------------------------
@@ -325,7 +357,8 @@ def run_insertion_deletion_order2(
     n = patcher.n_patches
     empty_coalition = patcher.empty_coalition
 
-    # ---- First-order baseline ----
+    # ---- First-order baseline (used for attribution-based insertion ordering
+    #      and start-player selection) ----
 
     iv_first_order = src.utils.convert_iv_to_first_order(
         iv,
@@ -334,17 +367,10 @@ def run_insertion_deletion_order2(
 
     baseline_attribution = _extract_image_attributions(
         iv_first_order,
-        n_image_patches=n
+        n_image_patches=n,
     )
 
-    coalition_matrix_del_mif_baseline = (
-        _build_mif_from_attributions(
-            baseline_attribution,
-            empty_coalition,
-        )
-    )
-
-    # ---- Clique-based coalitions ----
+    # ---- Clique-based deletion coalitions ----
 
     if n > 100:
         start_players = (
@@ -354,55 +380,48 @@ def run_insertion_deletion_order2(
                 k=19,
             )
         )
-
         coalition_matrix_del_mif, _ = (
             src.clique.get_cliques_greedy_mif_lif(
                 iv=iv,
                 start_players=start_players,
             )
         )
-
     else:
         coalition_matrix_del_mif, _ = (
             src.clique.get_cliques_greedy_mif_lif(iv=iv)
         )
 
+    # Trim to image patches only (clique builder may include text tokens)
+    coalition_matrix_del_mif = coalition_matrix_del_mif[:, -n:]
+
+    # Deletion: rows go from near-full → empty; append guaranteed empty row
     coalition_matrix_del_mif = np.concatenate(
         (coalition_matrix_del_mif, [empty_coalition]),
         axis=0,
     )
 
+    # ---- Insertion: independently built from first-order attributions ----
+    # Starts empty and adds patches in most-important-first order.
+    # This is intentionally *different* from the deletion sequence so that
+    # the two curves are distinct and the AID metric is meaningful.
+    coalition_matrix_ins_mif = _build_mif_ins_from_attributions(
+        baseline_attribution,
+    )
+
     def _score(coalition_matrix: np.ndarray) -> np.ndarray:
         images = patcher.build_images(coalition_matrix)
+        return score_coalitions(images, text, model, batch_size)
 
-        return score_coalitions(
-            images,
-            text,
-            model,
-            batch_size,
-        )
+    print("  [ins_del] Scoring deletion-MIF (order-2)...", flush=True)
+    predictions_del_mif = _score(coalition_matrix_del_mif)
 
-    print(
-        "  [ins_del] Scoring deletion-MIF (order-2)...",
-        flush=True,
-    )
-
-    predictions_del_mif = _score(
-        coalition_matrix_del_mif
-    )
-
-    print(
-        "  [ins_del] Scoring deletion-MIF baseline (order-2)...",
-        flush=True,
-    )
-
-    predictions_del_mif_baseline = _score(
-        coalition_matrix_del_mif_baseline
-    )
+    print("  [ins_del] Scoring insertion-MIF (order-2)...", flush=True)
+    predictions_ins_mif = _score(coalition_matrix_ins_mif)
 
     # ---- Normalize ----
+    # Use the deletion curve's endpoints so both curves share the same scale.
 
-    v_full = float(predictions_del_mif[0])
+    v_full  = float(predictions_del_mif[0])
     v_empty = float(predictions_del_mif[-1])
 
     denom = (
@@ -414,35 +433,32 @@ def run_insertion_deletion_order2(
     def _norm(arr: np.ndarray) -> np.ndarray:
         return (arr - v_empty) / denom
 
-    predictions_del_mif_norm = _norm(
-        predictions_del_mif
-    )
+    predictions_del_mif_norm = _norm(predictions_del_mif)
+    predictions_ins_mif_norm = _norm(predictions_ins_mif)
 
-    predictions_del_mif_baseline_norm = _norm(
-        predictions_del_mif_baseline
-    )
+    fractions_del_mif = coalition_matrix_del_mif.sum(axis=1) / n
+    fractions_ins_mif = coalition_matrix_ins_mif.sum(axis=1) / n
 
-    fractions_del_mif = (
-        coalition_matrix_del_mif.sum(axis=1) / n
+    # AID: compare over the shared fraction range (both have n steps after
+    # aligning, so we interpolate insertion onto deletion's fraction grid).
+    interp_ins = np.interp(
+        fractions_del_mif,
+        fractions_ins_mif,
+        predictions_ins_mif_norm,
     )
-
-    fractions_del_mif_baseline = (
-        coalition_matrix_del_mif_baseline.sum(axis=1) / n
-    )
+    aid = float(np.mean(interp_ins - predictions_del_mif_norm))
 
     return {
         "order": 2,
         "fractions_del_mif": fractions_del_mif,
-        "fractions_del_mif_baseline": (
-            fractions_del_mif_baseline
-        ),
+        "fractions_ins_mif": fractions_ins_mif,
         "deletion_mif": predictions_del_mif_norm,
-        "deletion_mif_baseline": (
-            predictions_del_mif_baseline_norm
-        ),
+        "insertion_mif": predictions_ins_mif_norm,
+        "aid": aid,
         "v_full": v_full,
         "v_empty": v_empty,
     }
+
 
 # ---------------------------------------------------------------------------
 # Output helpers
@@ -465,127 +481,53 @@ def plot_curves(
         start_val: float,
         end_val: float,
     ) -> np.ndarray:
-
         if smooth_sigma > 0:
-            arr = gaussian_filter1d(
-                arr.astype(float),
-                sigma=smooth_sigma,
-            )
-
+            arr = gaussian_filter1d(arr.astype(float), sigma=smooth_sigma)
             arr[0] = start_val
             arr[-1] = end_val
-
         return arr
 
-    # ---------------------------------------------------------
-    # ORDER 1
-    # ---------------------------------------------------------
+    # Both order-1 and order-2 now share the same plotting logic
+    frac_del = results["fractions_del_mif"] * 100
+    frac_ins = results["fractions_ins_mif"] * 100
 
-    if order == 1:
-
-        frac_del = (
-            results["fractions_del_mif"] * 100
-        )
-
-        frac_ins = (
-            results["fractions_ins_mif"] * 100
-        )
-
-        del_mif = _smooth_and_pin(
-            results["deletion_mif"].astype(float),
-            1.0,
-            0.0,
-        )
-
-        ins_mif = _smooth_and_pin(
-            results["insertion_mif"].astype(float),
-            0.0,
-            1.0,
-        )
-
-        ax.plot(
-            frac_del,
-            del_mif,
-            color="#e05c2a",
-            lw=2,
-            ls="--",
-            label=(
-                f"Deletion MIF "
-                f"(lower=better)  "
-                f"AID={results['aid']:.3f}"
-            ),
-        )
-
-        ax.plot(
-            frac_ins,
-            ins_mif,
-            color="#2a7ae0",
-            lw=2,
-            ls="-",
-            label="Insertion MIF (higher=better)",
-        )
-
-    # ---------------------------------------------------------
-    # ORDER 2
-    # ---------------------------------------------------------
-
-    else:
-
-        frac_del = (
-            results["fractions_del_mif"] * 100
-        )
-
-        frac_del_bl = (
-            results["fractions_del_mif_baseline"] * 100
-        )
-
-        del_mif = _smooth_and_pin(
-            results["deletion_mif"].astype(float),
-            1.0,
-            0.0,
-        )
-
-        del_mif_bl = _smooth_and_pin(
-            results["deletion_mif_baseline"].astype(float),
-            1.0,
-            0.0,
-        )
-
-        ax.plot(
-            frac_del,
-            del_mif,
-            color="#e05c2a",
-            lw=2,
-            ls="--",
-            label="Deletion MIF clique",
-        )
-
-        ax.plot(
-            frac_del_bl,
-            del_mif_bl,
-            color="#e05c2a",
-            lw=1,
-            ls=":",
-            label="Deletion MIF baseline",
-        )
-
-    # ---------------------------------------------------------
-
-    ax.axhline(
-        0,
-        color="black",
-        lw=0.5,
-        ls="--",
-        alpha=0.4,
+    del_mif = _smooth_and_pin(
+        results["deletion_mif"].astype(float),
+        1.0,
+        0.0,
+    )
+    ins_mif = _smooth_and_pin(
+        results["insertion_mif"].astype(float),
+        0.0,
+        1.0,
     )
 
-    ax.axhline(
-        1,
-        color="black",
-        lw=0.5,
+    label_suffix = " clique" if order == 2 else ""
+
+    ax.plot(
+        frac_del,
+        del_mif,
+        color="#e05c2a",
+        lw=2,
         ls="--",
-        alpha=0.4,
+        label=(
+            f"Deletion MIF{label_suffix} "
+            f"(lower=better)  "
+            f"AID={results['aid']:.3f}"
+        ),
     )
+
+    ax.plot(
+        frac_ins,
+        ins_mif,
+        color="#2a7ae0",
+        lw=2,
+        ls="-",
+        label=f"Insertion MIF{label_suffix} (higher=better)",
+    )
+
+    ax.axhline(0, color="black", lw=0.5, ls="--", alpha=0.4)
+    ax.axhline(1, color="black", lw=0.5, ls="--", alpha=0.4)
 
     ax.set_xlim(100, 0)
 
@@ -593,74 +535,40 @@ def plot_curves(
         "Percentage of patches retained (%)",
         fontsize=12,
     )
-
     ax.set_ylabel(
         "Prediction change (normalised)",
         fontsize=12,
     )
-
-    ax.legend(
-        fontsize=9,
-        loc="upper right",
-    )
-
-    ax.set_title(
-        title,
-        fontsize=12,
-        pad=10,
-    )
+    ax.legend(fontsize=9, loc="upper right")
+    ax.set_title(title, fontsize=12, pad=10)
 
     plt.tight_layout()
 
     if output_path:
-        plt.savefig(
-            output_path,
-            dpi=150,
-            bbox_inches="tight",
-        )
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
 
     if show:
         plt.show()
 
     plt.close("all")
 
-def save_results_csv(results: dict, output_path: str) -> None:
-    order = results.get("order", 1)
 
+def save_results_csv(results: dict, output_path: str) -> None:
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
+        writer.writerow([
+            "fraction_del_mif",
+            "deletion_mif",
+            "fraction_ins_mif",
+            "insertion_mif",
+        ])
+        writer.writerows(zip(
+            results["fractions_del_mif"],
+            results["deletion_mif"],
+            results["fractions_ins_mif"],
+            results["insertion_mif"],
+        ))
 
-        if order == 1:
-
-            writer.writerow([
-                "fraction_del_mif",
-                "deletion_mif",
-                "fraction_ins_mif",
-                "insertion_mif",
-            ])
-
-            writer.writerows(zip(
-                results["fractions_del_mif"],
-                results["deletion_mif"],
-                results["fractions_ins_mif"],
-                results["insertion_mif"],
-            ))
-
-        else:  # order == 2
-
-            writer.writerow([
-                "fraction_del_mif",
-                "deletion_mif",
-                "fraction_del_mif_baseline",
-                "deletion_mif_baseline",
-            ])
-
-            writer.writerows(zip(
-                results["fractions_del_mif"],
-                results["deletion_mif"],
-                results["fractions_del_mif_baseline"],
-                results["deletion_mif_baseline"],
-            ))
 
 # ---------------------------------------------------------------------------
 # Public entry point called from runner.py / explain()
@@ -713,7 +621,6 @@ def _get_iv_order(iv) -> int:
     if hasattr(iv, "max_order"):
         return int(iv.max_order)
     if hasattr(iv, "get_n_order"):
-        # Probe: if order-2 values are non-empty, treat as second-order.
         try:
             vals = iv.get_n_order(2).values
             if len(vals) > 0:
@@ -799,12 +706,6 @@ def run_and_save(
     # ---- Persist outputs -------------------------------------------------------
     order = results["order"]
 
-    target_tag = (
-        f"_{item.target_class}"
-        if item.target_class
-        else ""
-    )
-
     pred_class = (item.target_class or "").replace(" ", "_")
     img_stem = Path(sample.identifier).stem
     stem = f"{img_stem}_pred_{pred_class}"
@@ -815,8 +716,7 @@ def run_and_save(
     save_results_csv(results, str(csv_path))
 
     title_lines = [
-        f"Insertion / Deletion — "
-        f"{sample.identifier}"
+        f"Insertion / Deletion — {sample.identifier}"
     ]
 
     if item.target_class:
@@ -833,10 +733,7 @@ def run_and_save(
         output_path=str(plot_path),
     )
 
-    aid_str = ""
-
-    if order == 1 and "aid" in results:
-        aid_str = f"  AID={results['aid']:.4f}"
+    aid_str = f"  AID={results['aid']:.4f}" if "aid" in results else ""
 
     print(
         f"  [ins_del] order={order}{aid_str}"
@@ -845,7 +742,7 @@ def run_and_save(
         f"  → {plot_path.name}",
         flush=True,
     )
-    
+
     return results
 
 

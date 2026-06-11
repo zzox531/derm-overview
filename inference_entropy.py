@@ -122,46 +122,44 @@ def release_results(results: list) -> None:
 
 MODELS = [
     # ── General VLMs ──────────────────────────────────────────────
-    # {
-    #     "name": "ViT-B-16",
-    #     "backend": "open_clip",
-    #     "pretrained": "openai",
-    #     "budget_caption": 1024,
-    #     "budget_zeroshot": 256,
-    # },
-    # {
-    #     "name": "ViT-B-16-SigLIP-256",
-    #     "backend": "open_clip",
-    #     "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
-    #     "hf_tokenizer_max_length": 64,
-    #     "pretrained": "webli",
-    #     "budget_caption": 1024,
-    #     "budget_zeroshot": 256,
-    # },
-    # {
-    #     "name": "coca_ViT-B-32",
-    #     "backend": "open_clip",
-    #     "pretrained": "laion2b_s13b_b90k",
-    #     "budget_caption": 1024,
-    #     "budget_zeroshot": 256,
-    # },
+    {
+        "name": "ViT-B-16",
+        "backend": "open_clip",
+        "pretrained": "openai",
+        "budget_caption": 1024,
+        "budget_zeroshot": 256,
+    },
+    {
+        "name": "ViT-B-16-SigLIP-256",
+        "backend": "open_clip",
+        "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
+        "hf_tokenizer_max_length": 64,
+        "pretrained": "webli",
+        "budget_caption": 1024,
+        "budget_zeroshot": 256,
+    },
+    {
+        "name": "coca_ViT-B-32",
+        "backend": "open_clip",
+        "pretrained": "laion2b_s13b_b90k",
+        "budget_caption": 1024,
+        "budget_zeroshot": 256,
+    },
 
     # # ── Biomedical VLMs ───────────────────────────────────────────
-    # {
-    #     "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-    #     "backend": "open_clip",
-    #     "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-    #     "budget_caption": 256,
-    #     "budget_zeroshot": 64,
-    # },
-    # # ── DermLIP variants (local checkpoints required) ─────────────
-    # # Set DERMLIP_ROOT to the folder containing your .pt weight files.
-    # {
-    #     "name": "hf-hub:redlessone/DermLIP_ViT-B-16",
-    #     "backend": "open_clip",
-    #     "budget_caption": 1024,
-    #     "budget_zeroshot": 256,
-    # },
+    {
+        "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+        "backend": "open_clip",
+        "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+        "budget_caption": 256,
+        "budget_zeroshot": 64,
+    },
+    {
+        "name": "hf-hub:redlessone/DermLIP_ViT-B-16",
+        "backend": "open_clip",
+        "budget_caption": 1024,
+        "budget_zeroshot": 256,
+    },
     {
         "name": "suinleelab/monet",
         "backend": "huggingface",
@@ -170,7 +168,7 @@ MODELS = [
 ]
 
 DERM1M_ENTRIES = [
-    # {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
+    {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
     # {"filename": "IIYI/2281_1.png", "index": 126},
 ]
 
@@ -311,7 +309,7 @@ def main() -> None:
     if (run_caption or run_ins_del_standalone) and len(DERM1M_ENTRIES) > 0:
         logger.info("Loading Derm1M dataset")
         ds = load_dataset("redlessone/Derm1M")
-        caption_samples = from_derm1m(ds, DERM1M_ENTRIES, image_root=args.image_root)
+        caption_samples = from_derm1m(ds, DERM1M_ENTRIES)
 
     # Zero-shot samples — loaded if zeroshot OR standalone ins/del is needed.
     ham_samples = None
