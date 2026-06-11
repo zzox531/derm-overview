@@ -1,0 +1,19 @@
+2026-06-10 22:43:28,902  INFO      Starting inference run
+2026-06-10 22:43:28,902  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-10 22:43:28,902  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-10 22:43:28,902  INFO      ============================================================
+2026-06-10 22:43:28,902  INFO      DEVICE CHECK
+2026-06-10 22:43:28,902  INFO      ============================================================
+2026-06-10 22:43:28,902  INFO      PyTorch version : 2.6.0+cu124
+2026-06-10 22:43:28,938  INFO      CUDA available  : YES  (1 device)
+2026-06-10 22:43:28,940  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-10 22:43:28,940  INFO      Active device   : cuda
+2026-06-10 22:43:28,940  INFO      ============================================================
+2026-06-10 22:43:37,997  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-10 22:43:38,003  WARNING   Caption task requested but DERM1M_ENTRIES is empty — skipping.
+2026-06-10 22:43:38,003  INFO      Zero-shot task ready — 1 sample(s), 7 classes.
+2026-06-10 22:43:38,004  INFO      
+────────────────────────────────────────────────────────────
+2026-06-10 22:43:38,004  INFO      Loading model: suinleelab/monet
+2026-06-10 22:43:38,004  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-10 22:44:44,122  INFO        Running zero-shot task (budget=64)

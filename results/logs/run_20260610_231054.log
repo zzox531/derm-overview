@@ -1,0 +1,33 @@
+2026-06-10 23:10:54,701  INFO      Starting inference run
+2026-06-10 23:10:54,702  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-10 23:10:54,702  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-10 23:10:54,702  INFO      ============================================================
+2026-06-10 23:10:54,702  INFO      DEVICE CHECK
+2026-06-10 23:10:54,702  INFO      ============================================================
+2026-06-10 23:10:54,702  INFO      PyTorch version : 2.6.0+cu124
+2026-06-10 23:10:54,737  INFO      CUDA available  : YES  (1 device)
+2026-06-10 23:10:54,740  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-10 23:10:54,740  INFO      Active device   : cuda
+2026-06-10 23:10:54,740  INFO      ============================================================
+2026-06-10 23:11:03,959  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-10 23:11:03,967  WARNING   Caption task requested but DERM1M_ENTRIES is empty — skipping.
+2026-06-10 23:11:03,967  INFO      Zero-shot task ready — 1 sample(s), 7 classes.
+2026-06-10 23:11:03,968  INFO      
+────────────────────────────────────────────────────────────
+2026-06-10 23:11:03,968  INFO      Loading model: hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224
+2026-06-10 23:11:03,968  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-10 23:11:03,968  INFO      Parsing model identifier. Schema: hf-hub, Identifier: microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224
+2026-06-10 23:11:03,968  INFO      Attempting to load config from HF Hub: microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224
+2026-06-10 23:11:04,218  INFO      Loaded model config from HF Hub: microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224
+2026-06-10 23:11:04,494  INFO      Found default weights file on HF Hub: /home/jmali/.cache/huggingface/hub/models--microsoft--BiomedCLIP-PubMedBERT_256-vit_base_patch16_224/snapshots/9f341de24bfb00180f1b847274256e9b65a3a32e/open_clip_pytorch_model.bin
+2026-06-10 23:11:04,494  INFO      Instantiating model architecture: CustomTextCLIP
+2026-06-10 23:11:07,379  INFO      Loading full pretrained weights from: /home/jmali/.cache/huggingface/hub/models--microsoft--BiomedCLIP-PubMedBERT_256-vit_base_patch16_224/snapshots/9f341de24bfb00180f1b847274256e9b65a3a32e/open_clip_pytorch_model.bin
+2026-06-10 23:11:15,440  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-10 23:11:15,441  INFO      Model hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224 creation process complete.
+2026-06-10 23:11:15,969  INFO        Running zero-shot task (budget=64)
+2026-06-10 23:13:32,929  INFO        Zero-shot results saved → results/zeroshot/hf-hub_microsoft_BiomedCLIP-PubMedBERT_256-vit_base_patch16_224
+2026-06-10 23:13:33,115  INFO        GPU memory after cleanup: 0.01 GB allocated, 0.02 GB reserved
+2026-06-10 23:13:33,115  INFO      
+All models done.
+2026-06-10 23:13:33,115  INFO        [hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224]  zeroshot: 1 item(s)
+2026-06-10 23:13:33,115  INFO      Inference run complete.

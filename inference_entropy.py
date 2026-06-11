@@ -128,20 +128,25 @@ MODELS = [
     #     "budget_caption": 1024,
     #     "budget_zeroshot": 256,
     # },
-    {
-        "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        "backend": "open_clip",
-        "hf_tokenizer_name": (
-            "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
-        ),
-        "budget_caption":  256,
-        "budget_zeroshot": 64,
+    # {
+        # "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+        # "backend": "open_clip",
+        # "hf_tokenizer_name": (
+        #     "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
+        # ),
+        # "budget_caption":  256,
+        # "budget_zeroshot": 64,
         # ins_del budget is separate; omit to inherit --budget-ins-del
+    # },
+    {
+        "name": "suinleelab/monet",
+        "backend": "huggingface",
+        "budget_zeroshot": 64,
     },
 ]
 
 DERM1M_ENTRIES = [
-    {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
+    # {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
     # {"filename": "IIYI/2281_1.png", "index": 126},
 ]
 
@@ -157,11 +162,36 @@ HAM7 = [
 
 HAM_IMAGES = [
     "ham_images/sample_0_melanocytic_Nevi.jpg",
-    "ham_images/sample_1_melanocytic_Nevi.jpg",
-    "ham_images/sample_2_melanoma.jpg",
-    "ham_images/sample_3_melanoma.jpg",
-    "ham_images/sample_4_melanocytic_Nevi.jpg",
+    # "ham_images/sample_1_melanocytic_Nevi.jpg",
+    # "ham_images/sample_2_melanoma.jpg",
+    # "ham_images/sample_3_melanoma.jpg",
+    # "ham_images/sample_4_melanocytic_Nevi.jpg",
 ]
+
+# PAD_ROOT = "pad_images"
+PAD_LABELS = [
+    "melanoma",
+    "basal cell carcinoma",
+    "actinic keratosis",
+    "benign keratosis",
+    "vascular lesion",
+    "dermatofibroma",
+]
+
+PAD_IMAGES = [
+    # "pad_images/PAT_53_82_657.png"
+    ]
+
+# DAFFODIL_ROOT = "daffodil_images"
+DAFFODIL_LABELS = [
+    "acne",
+    "hyperpigmentation",
+    "nail psoriasis",
+    "sjs ten",
+    "vitiligo",
+]
+
+DAFFODIL_IMAGES = []
 
 
 # ---------------------------------------------------------------------------
@@ -196,8 +226,6 @@ def parse_args() -> argparse.Namespace:
                         help="Banzhaf masking probability for standalone ins/del (default: 0.5).")
     parser.add_argument("--output-dir",  type=Path, default=Path("results"),
                         help="Root directory for all outputs (default: ./results).")
-    parser.add_argument("--image-root",  type=str, default="derm_train_images",
-                        help="Root directory for Derm1M images.")
     return parser.parse_args()
 
 
@@ -226,7 +254,7 @@ def main() -> None:
 
         from src.model_loader import load_model
         from src.tasks import CaptionTask, ZeroShotTask
-        from src.datasets_adapter import from_derm1m, from_image_folder
+        from src.datasets_adapter import from_derm1m, from_image_folder, from_image_root
         from src.runner import explain
     except ImportError as exc:
         logger.error(f"Import failed: {exc}")
@@ -261,10 +289,17 @@ def main() -> None:
         ds = load_dataset("redlessone/Derm1M")
         caption_samples = from_derm1m(ds, DERM1M_ENTRIES, image_root=args.image_root)
 
-    # Zero-shot samples (HAM) — loaded if zeroshot OR standalone ins/del is needed.
-    zs_samples = None
-    if (run_zeroshot or run_ins_del_standalone) and len(HAM_IMAGES) > 0:
-        zs_samples = from_image_folder(HAM_IMAGES)
+    # Zero-shot samples — loaded if zeroshot OR standalone ins/del is needed.
+    ham_samples = None
+    pad_samples = None
+    daffodil_samples = None
+    if (run_zeroshot or run_ins_del_standalone):
+        if len(HAM_IMAGES) > 0:
+            ham_samples = from_image_folder(HAM_IMAGES)
+        if len(PAD_IMAGES) > 0:
+            pad_samples = from_image_folder(PAD_IMAGES)
+        if len(DAFFODIL_IMAGES) > 0:
+            daffodil_samples = from_image_folder(DAFFODIL_IMAGES)
 
     if run_caption:
         if caption_samples is None or len(caption_samples) == 0:
@@ -273,28 +308,72 @@ def main() -> None:
             caption_task = CaptionTask(samples=caption_samples)
             logger.info(f"Caption task ready — {len(caption_samples)} sample(s).")
 
+    zeroshot_tasks: list[tuple[str, ZeroShotTask]] = []
     if run_zeroshot:
-        if zs_samples is None or len(zs_samples) == 0:
-            logger.warning("Zero-shot task requested but HAM_IMAGES is empty — skipping.")
+        if ham_samples is None or len(ham_samples) == 0:
+            logger.warning("Zero-shot task requested but HAM_IMAGES is empty — skipping HAM zero-shot.")
         else:
-            zeroshot_task = ZeroShotTask(
-                samples=zs_samples,
-                class_names=HAM7,
-                prompt_template=lambda c: f"This image shows a case of {c}",
-                explain_classes="top1",
-                top_k=3,
+            zeroshot_tasks.append(
+                (
+                    "HAM",
+                    ZeroShotTask(
+                        samples=ham_samples,
+                        class_names=HAM7,
+                        prompt_template=lambda c: f"This image shows a case of {c}",
+                        explain_classes="top1",
+                        top_k=3,
+                    ),
+                )
             )
             logger.info(
-                f"Zero-shot task ready — {len(zs_samples)} sample(s), {len(HAM7)} classes."
+                f"HAM zero-shot task ready — {len(ham_samples)} sample(s), {len(HAM7)} classes."
+            )
+
+        if pad_samples is None or len(pad_samples) == 0:
+            logger.warning("PAD zero-shot not loaded or empty — skipping PAD dataset.")
+        else:
+            zeroshot_tasks.append(
+                (
+                    "PAD",
+                    ZeroShotTask(
+                        samples=pad_samples,
+                        class_names=PAD_LABELS,
+                        prompt_template=lambda c: f"This image shows a case of {c}",
+                        explain_classes="top1",
+                        top_k=3,
+                    ),
+                )
+            )
+            logger.info(
+                f"PAD zero-shot task ready — {len(pad_samples)} sample(s), {len(PAD_LABELS)} classes."
+            )
+
+        if daffodil_samples is None or len(daffodil_samples) == 0:
+            logger.warning("Daffodil zero-shot not loaded or empty — skipping Daffodil dataset.")
+        else:
+            zeroshot_tasks.append(
+                (
+                    "Daffodil",
+                    ZeroShotTask(
+                        samples=daffodil_samples,
+                        class_names=DAFFODIL_LABELS,
+                        prompt_template=lambda c: f"This image shows a case of {c}",
+                        explain_classes="top1",
+                        top_k=3,
+                    ),
+                )
+            )
+            logger.info(
+                f"Daffodil zero-shot task ready — {len(daffodil_samples)} sample(s), {len(DAFFODIL_LABELS)} classes."
             )
 
     if run_ins_del_standalone:
-        # Standalone ins/del runs over BOTH HAM_IMAGES (zero-shot prompts)
+        # Standalone ins/del runs over HAM/PAD/Daffodil zero-shot prompts
         # and DERM1M_ENTRIES (captions), depending on which are populated.
-        if zs_samples is not None and len(zs_samples) > 0:
+        if ham_samples is not None and len(ham_samples) > 0:
             ins_del_tasks.append(
                 InsDelTask(
-                    samples=zs_samples,
+                    samples=ham_samples,
                     class_names=HAM7,
                     prompt_template=lambda c: f"This image shows a case of {c}",
                     explain_classes="top1",
@@ -303,7 +382,39 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"Standalone ins/del (HAM/zero-shot) ready — {len(zs_samples)} sample(s).  "
+                f"Standalone ins/del (HAM/zero-shot) ready — {len(ham_samples)} sample(s).  "
+                f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
+            )
+
+        if pad_samples is not None and len(pad_samples) > 0:
+            ins_del_tasks.append(
+                InsDelTask(
+                    samples=pad_samples,
+                    class_names=PAD_LABELS,
+                    prompt_template=lambda c: f"This image shows a case of {c}",
+                    explain_classes="top1",
+                    budget=args.budget_ins_del,
+                    p=args.ins_del_p,
+                )
+            )
+            logger.info(
+                f"Standalone ins/del (PAD/zero-shot) ready — {len(pad_samples)} sample(s).  "
+                f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
+            )
+
+        if daffodil_samples is not None and len(daffodil_samples) > 0:
+            ins_del_tasks.append(
+                InsDelTask(
+                    samples=daffodil_samples,
+                    class_names=DAFFODIL_LABELS,
+                    prompt_template=lambda c: f"This image shows a case of {c}",
+                    explain_classes="top1",
+                    budget=args.budget_ins_del,
+                    p=args.ins_del_p,
+                )
+            )
+            logger.info(
+                f"Standalone ins/del (Daffodil/zero-shot) ready — {len(daffodil_samples)} sample(s).  "
                 f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
             )
 
@@ -373,23 +484,24 @@ def main() -> None:
         # ------------------------------------------------------------------
         # Zero-shot task  (+ optional ins/del curves from the same IV)
         # ------------------------------------------------------------------
-        if zeroshot_task is not None:
-            logger.info(
-                f"  Running zero-shot task (budget={budget_zeroshot}"
-                + (f", ins_del -> {ins_del_dir}" if ins_del_dir else "")
-                + ")"
-            )
-            zs_results = explain(
-                model,
-                zeroshot_task,
-                budget=budget_zeroshot,
-                output_dir=out_dirs["zeroshot"],
-                ins_del_output_dir=ins_del_dir,
-                ins_del_batch_size=args.ins_del_batch_size,
-            )
-            release_results(zs_results)
-            all_results[model_name]["zeroshot"] = zs_results
-            logger.info(f"  Zero-shot results saved → {out_dirs['zeroshot']}")
+        if zeroshot_tasks:
+            for task_name, task in zeroshot_tasks:
+                logger.info(
+                    f"  Running zero-shot task {task_name} (budget={budget_zeroshot}"
+                    + (f", ins_del -> {ins_del_dir}" if ins_del_dir else "")
+                    + ")"
+                )
+                zs_results = explain(
+                    model,
+                    task,
+                    budget=budget_zeroshot,
+                    output_dir=out_dirs["zeroshot"],
+                    ins_del_output_dir=ins_del_dir,
+                    ins_del_batch_size=args.ins_del_batch_size,
+                )
+                release_results(zs_results)
+                all_results[model_name].setdefault("zeroshot", []).extend(zs_results)
+                logger.info(f"  Zero-shot results saved → {out_dirs['zeroshot']} ({task_name})")
 
         # ------------------------------------------------------------------
         # Standalone ins/del task(s) — run over HAM_IMAGES and/or DERM1M_ENTRIES

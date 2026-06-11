@@ -1,0 +1,22 @@
+2026-06-10 12:55:28,751  INFO      Starting inference run
+2026-06-10 12:55:28,751  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-10 12:55:28,751  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-10 12:55:28,751  INFO      ============================================================
+2026-06-10 12:55:28,751  INFO      DEVICE CHECK
+2026-06-10 12:55:28,751  INFO      ============================================================
+2026-06-10 12:55:28,751  INFO      PyTorch version : 2.6.0+cu124
+2026-06-10 12:55:28,884  INFO      CUDA available  : YES  (1 device)
+2026-06-10 12:55:28,887  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-10 12:55:28,887  INFO      Active device   : cuda
+2026-06-10 12:55:28,887  INFO      ============================================================
+2026-06-10 12:55:38,115  WARNING   Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+2026-06-10 12:55:38,116  INFO      Logged in to HuggingFace Hub.
+2026-06-10 12:55:38,116  INFO      Loading Derm1M dataset for caption task …
+2026-06-10 12:55:39,681  INFO      Caption task ready — 0 sample(s).
+2026-06-10 12:55:39,687  INFO      Zero-shot task ready — 1 sample(s), 7 classes.
+2026-06-10 12:55:39,687  INFO      
+────────────────────────────────────────────────────────────
+2026-06-10 12:55:39,687  INFO      Loading model: hf-hub:suinleelab/monet
+2026-06-10 12:55:39,688  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-10 12:55:39,688  INFO      Parsing model identifier. Schema: hf-hub, Identifier: suinleelab/monet
+2026-06-10 12:55:39,688  INFO      Attempting to load config from HF Hub: suinleelab/monet
