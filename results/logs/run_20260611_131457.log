@@ -1,0 +1,29 @@
+2026-06-11 13:14:57,132  INFO      Starting inference run
+2026-06-11 13:14:57,132  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-11 13:14:57,132  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-11 13:14:57,132  INFO      ============================================================
+2026-06-11 13:14:57,132  INFO      DEVICE CHECK
+2026-06-11 13:14:57,132  INFO      ============================================================
+2026-06-11 13:14:57,133  INFO      PyTorch version : 2.6.0+cu124
+2026-06-11 13:14:57,269  INFO      CUDA available  : YES  (1 device)
+2026-06-11 13:14:57,273  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-11 13:14:57,273  INFO      Active device   : cuda
+2026-06-11 13:14:57,273  INFO      ============================================================
+2026-06-11 13:15:05,325  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-11 13:15:05,637  WARNING   Caption task requested but DERM1M_ENTRIES is empty — skipping.
+2026-06-11 13:15:05,637  INFO      HAM zero-shot task ready — 1 sample(s), 7 classes.
+2026-06-11 13:15:05,637  INFO      PAD zero-shot task ready — 5 sample(s), 5 classes.
+2026-06-11 13:15:05,637  WARNING   Daffodil zero-shot not loaded or empty — skipping Daffodil dataset.
+2026-06-11 13:15:05,637  INFO      
+────────────────────────────────────────────────────────────
+2026-06-11 13:15:05,637  INFO      Loading model: suinleelab/monet
+2026-06-11 13:15:05,638  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-11 13:15:08,871  INFO        Running zero-shot task HAM (budget=64)
+2026-06-11 13:24:37,893  INFO        Zero-shot results saved → results/zeroshot/suinleelab_monet (HAM)
+2026-06-11 13:24:37,893  INFO        Running zero-shot task PAD (budget=64)
+2026-06-11 13:24:38,010  INFO        Zero-shot results saved → results/zeroshot/suinleelab_monet (PAD)
+2026-06-11 13:24:38,192  INFO        GPU memory after cleanup: 0.01 GB allocated, 0.02 GB reserved
+2026-06-11 13:24:38,192  INFO      
+All models done.
+2026-06-11 13:24:38,192  INFO        [suinleelab/monet]  zeroshot: 1 item(s)
+2026-06-11 13:24:38,192  INFO      Inference run complete.
