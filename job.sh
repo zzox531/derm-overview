@@ -2,6 +2,7 @@
 #SBATCH --partition=hpc
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:titanx:1
+#SBATCH --time=00:15:00
 #SBATCH --job-name=dermlip
 #SBATCH --output=logs/%j.out
 #SBATCH --error=logs/%j.err

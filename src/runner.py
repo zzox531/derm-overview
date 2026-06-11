@@ -15,6 +15,7 @@ import src.plot
 import src.fixlip
 import src.game_huggingface
 import src.game_openclip
+from src.model_loader import _CustomHFTokenizer
 from src.model_loader import LoadedModel
 from src.tasks import Task, InferenceResult
 from pathlib import Path
@@ -32,6 +33,7 @@ def _build_game(model: LoadedModel, sample, batch_size: int = 32):
             processor=model.processor,
             input_image=sample.image,
             input_text=sample.text,
+            batch_size=batch_size,
             batch_size=batch_size,
         )
     return src.game_openclip.OpenCLIPGame(
@@ -54,7 +56,29 @@ def _extract_text_tokens(model: LoadedModel, game, input_text: str):
             tokens = [model.tokenizer.decode([t.item()]) for t in ids]
     else:
         token_ids = model.tokenizer(input_text)[0]
-        if hasattr(model.tokenizer, "decode"):
+                    
+
+        if isinstance(model.tokenizer, _CustomHFTokenizer):
+            # Returns list[str] directly — one token per id
+            tokens = model.tokenizer.decode(token_ids.tolist())
+            token_ids = model.tokenizer(input_text)[0]
+            raw = model.tokenizer.tk.convert_ids_to_tokens(
+                [int(i) for i in token_ids], skip_special_tokens=False
+            )
+            print("RAW token ids:", token_ids[:20].tolist())
+            print("RAW tokens:   ", raw[:20])
+            tokens = model.tokenizer.decode(token_ids.tolist())
+            print("After decode: ", tokens)
+            return [
+                t.replace("</w>", "")
+                 .replace("▁", " ")
+                 .replace("<|startoftext|>", "")
+                 .replace("<|endoftext|>", "")
+                 .strip()
+                for t in tokens
+                if isinstance(t, str) and t not in ("<pad>", "</s>", "<s>")
+            ]
+        elif hasattr(model.tokenizer, "decode"):
             tokens = [model.tokenizer.decode([t.item()]) for t in token_ids]
         else:
             tokens = [str(t) for t in token_ids.numpy().tolist()]
@@ -64,9 +88,12 @@ def _extract_text_tokens(model: LoadedModel, game, input_text: str):
 
     return [
         t.replace("</w>", "")
+         .replace("▁", " ")
          .replace("<|startoftext|>", "")
          .replace("<|endoftext|>", "")
+         .strip()
         for t in tokens
+        if isinstance(t, str) and t not in ("<pad>", "</s>", "<s>")
     ]
 
 
@@ -165,6 +192,14 @@ def explain(
                 img_t, model.image_mean, model.image_std
             ).permute(1, 2, 0).numpy()
 
+            print("n_players_image:", game.n_players_image)
+            print("n_players_text:", game.n_players_text)
+            print("iv.n_players:", iv.n_players)
+            print("iv index:", iv.index)
+            # Check the actual interaction indices stored
+            all_players = set(p for interaction in iv.interaction_lookup for p in interaction)
+            print("player index range in iv:", min(all_players), "to", max(all_players))
+            
             src.plot.plot_image_and_text_together(
                 img=img_np,
                 text=tokens,

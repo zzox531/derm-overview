@@ -24,27 +24,39 @@ class OpenCLIPGame(Game):
         self.inputs = self._processor_function([input_image], [input_text])
 
         # Safely extract image parameters (OpenCLIP often uses `model.visual.image_size`)
-        if hasattr(self.model, 'visual'):
-            if hasattr(self.model.visual, 'image_size'):
-                self.image_size = self.model.visual.image_size[0] if isinstance(self.model.visual.image_size, tuple) else self.model.visual.image_size
-            else:
-                self.image_size = 224 # fallback
-        else:
-            self.image_size = 224
-        
+        self.image_size = self.inputs[0].shape[-1]
+
         self.patch_size = patch_size
         self.n_channels = 3
         self.grid_size = self.image_size // self.patch_size
-        self.n_players_image = int(self.image_size / self.patch_size) ** 2 
+        self.n_players_image = self.grid_size ** 2
         
         # In open_clip, BOS and EOS wrap the tokens.
         # We find the number of tokens by excluding padding and special tokens. 
         text_tensor = self.inputs[1][0]
         # Count non-pad tokens subtracting 2 for BOS and EOS.
-        self.n_players_text = (text_tensor != self.pad_token_id).sum().item() - 2 
-        # Handle Edge cases where n_players_text < 1
-        if self.n_players_text < 1:
-            self.n_players_text = 1
+        first_token = text_tensor[0].item()
+        last_non_pad = text_tensor[text_tensor != self.pad_token_id][-1].item()
+        has_bos = (first_token != self.pad_token_id) and (first_token == last_non_pad or 
+                self.text_tokenizer.tk.convert_ids_to_tokens([first_token])[0] in ('<s>', '<|startoftext|>') 
+                if hasattr(self.text_tokenizer, 'tk') else False)
+        has_eos = last_non_pad == self.pad_token_id  # already excluded, so check differently
+
+        # Simpler: just count non-pad, non-special tokens directly
+        if hasattr(self.text_tokenizer, 'tk'):
+            special_ids = set(self.text_tokenizer.tk.all_special_ids)
+            # Also get the id of standalone space token if it exists
+            space_token_id = self.text_tokenizer.tk.convert_tokens_to_ids('▁')
+            if space_token_id == self.text_tokenizer.tk.unk_token_id:
+                space_token_id = None  # '▁' not a standalone token in this vocab
+            self.n_players_text = sum(
+                1 for t in text_tensor.tolist()
+                if t != self.pad_token_id 
+                and t not in special_ids
+                and (space_token_id is None or t != space_token_id)
+            )
+        else:
+            self.n_players_text = (text_tensor != self.pad_token_id).sum().item() - 2
 
         self.text_context_length = self.inputs[1].shape[-1]
         self.device = next(self.model.parameters()).device

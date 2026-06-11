@@ -123,6 +123,23 @@ def release_results(results: list) -> None:
 # ---------------------------------------------------------------------------
 
 MODELS = [
+    # ── General VLMs ──────────────────────────────────────────────
+    # {
+    #     "name": "ViT-B-16",
+    #     "backend": "open_clip",
+    #     "pretrained": "openai",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
+    # },
+    # {
+    #     "name": "ViT-B-16-SigLIP-256",
+    #     "backend": "open_clip",
+    #     "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
+    #     "hf_tokenizer_max_length": 64,
+    #     "pretrained": "webli",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
+    # },
     # {
     #     "name": "coca_ViT-B-32",
     #     "backend": "open_clip",
@@ -130,15 +147,22 @@ MODELS = [
     #     "budget_caption": 1024,
     #     "budget_zeroshot": 256,
     # },
+
+    # # ── Biomedical VLMs ───────────────────────────────────────────
     # {
-        # "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        # "backend": "open_clip",
-        # "hf_tokenizer_name": (
-        #     "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224"
-        # ),
-        # "budget_caption":  256,
-        # "budget_zeroshot": 64,
-        # ins_del budget is separate; omit to inherit --budget-ins-del
+    #     "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+    #     "backend": "open_clip",
+    #     "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+    #     "budget_caption": 256,
+    #     "budget_zeroshot": 64,
+    # },
+    # # ── DermLIP variants (local checkpoints required) ─────────────
+    # # Set DERMLIP_ROOT to the folder containing your .pt weight files.
+    # {
+    #     "name": "hf-hub:redlessone/DermLIP_ViT-B-16",
+    #     "backend": "open_clip",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
     # },
     {
         "name": "suinleelab/monet",
