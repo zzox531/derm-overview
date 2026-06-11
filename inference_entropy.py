@@ -42,7 +42,9 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-
+# from ibm_db import columns
+import pandas as pd
+# from pyparsing import col
 import torch
 
 # ---------------------------------------------------------------------------
@@ -161,7 +163,7 @@ HAM7 = [
 ]
 
 HAM_IMAGES = [
-    "ham_images/sample_0_melanocytic_Nevi.jpg",
+    # "ham_images/sample_0_melanocytic_Nevi.jpg",
     # "ham_images/sample_1_melanocytic_Nevi.jpg",
     # "ham_images/sample_2_melanoma.jpg",
     # "ham_images/sample_3_melanoma.jpg",
@@ -182,6 +184,8 @@ PAD_IMAGES = [
     # "pad_images/PAT_53_82_657.png"
     ]
 
+PAD_TARGETS = []
+
 # DAFFODIL_ROOT = "daffodil_images"
 DAFFODIL_LABELS = [
     "acne",
@@ -192,7 +196,27 @@ DAFFODIL_LABELS = [
 ]
 
 DAFFODIL_IMAGES = []
+DAFFODIL_TARGETS = []
 
+def download_pad_daffodil ():
+    global PAD_IMAGES, PAD_TARGETS, DAFFODIL_IMAGES, DAFFODIL_TARGETS
+    dirs = ["pad_images", "daffodil_images"]
+    
+    df = pd.read_csv(os.path.join(dirs[0], "meta.csv"))
+    pad_imgs = df['filename'].tolist()
+    PAD_TARGETS = df['label'].tolist()
+    
+    df = pd.read_csv(os.path.join(dirs[1], "meta.csv"))
+    daffodil_imgs = df['filename'].tolist()
+    DAFFODIL_TARGETS = df['label'].tolist()
+    
+    PAD_IMAGES = [os.path.join(dirs[0], f) for f in pad_imgs]
+    DAFFODIL_IMAGES = [os.path.join(dirs[1], f) for f in daffodil_imgs]
+    
+    print(PAD_IMAGES)
+    print(PAD_TARGETS)
+    print(DAFFODIL_IMAGES)
+    print(DAFFODIL_TARGETS)
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -254,7 +278,7 @@ def main() -> None:
 
         from src.model_loader import load_model
         from src.tasks import CaptionTask, ZeroShotTask
-        from src.datasets_adapter import from_derm1m, from_image_folder, from_image_root
+        from src.datasets_adapter import from_derm1m, from_image_folder
         from src.runner import explain
     except ImportError as exc:
         logger.error(f"Import failed: {exc}")
@@ -273,6 +297,8 @@ def main() -> None:
         logger.info("Logged in to HuggingFace Hub.")
 
     # --- Build tasks ---
+    download_pad_daffodil()
+    
     run_caption  = "caption"  in tasks
     run_zeroshot = "zeroshot" in tasks
     run_ins_del_standalone = do_ins_del and not run_caption and not run_zeroshot

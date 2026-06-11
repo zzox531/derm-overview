@@ -26,13 +26,13 @@ def _build_game(model: LoadedModel, sample, batch_size: int = 32):
         # HuggingFace vision-language models like MONET can use heavier
         # preprocessing and larger cross-modal batches, so reduce the
         # game batch size to avoid sudden memory spikes.
-        hf_batch_size = min(batch_size, 8)
+        # hf_batch_size = min(batch_size, 8)
         return src.game_huggingface.VisionLanguageGame(
             model=model.model,
             processor=model.processor,
             input_image=sample.image,
             input_text=sample.text,
-            batch_size=hf_batch_size,
+            batch_size=batch_size,
         )
     return src.game_openclip.OpenCLIPGame(
         model=model.model,

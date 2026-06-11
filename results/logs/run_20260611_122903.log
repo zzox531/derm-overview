@@ -1,0 +1,27 @@
+2026-06-11 12:29:03,656  INFO      Starting inference run
+2026-06-11 12:29:03,656  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-11 12:29:03,656  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-11 12:29:03,656  INFO      ============================================================
+2026-06-11 12:29:03,656  INFO      DEVICE CHECK
+2026-06-11 12:29:03,656  INFO      ============================================================
+2026-06-11 12:29:03,656  INFO      PyTorch version : 2.6.0+cu124
+2026-06-11 12:29:03,785  INFO      CUDA available  : YES  (1 device)
+2026-06-11 12:29:03,787  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-11 12:29:03,787  INFO      Active device   : cuda
+2026-06-11 12:29:03,788  INFO      ============================================================
+2026-06-11 12:29:11,681  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-11 12:29:11,688  WARNING   Caption task requested but DERM1M_ENTRIES is empty — skipping.
+2026-06-11 12:29:11,688  INFO      HAM zero-shot task ready — 1 sample(s), 7 classes.
+2026-06-11 12:29:11,688  WARNING   PAD zero-shot not loaded or empty — skipping PAD dataset.
+2026-06-11 12:29:11,688  WARNING   Daffodil zero-shot not loaded or empty — skipping Daffodil dataset.
+2026-06-11 12:29:11,688  INFO      
+────────────────────────────────────────────────────────────
+2026-06-11 12:29:11,688  INFO      Loading model: suinleelab/monet
+2026-06-11 12:29:11,688  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-11 12:29:37,616  INFO        Running zero-shot task HAM (budget=64)
+2026-06-11 12:39:29,636  INFO        Zero-shot results saved → results/zeroshot/suinleelab_monet (HAM)
+2026-06-11 12:39:29,807  INFO        GPU memory after cleanup: 0.01 GB allocated, 0.02 GB reserved
+2026-06-11 12:39:29,807  INFO      
+All models done.
+2026-06-11 12:39:29,807  INFO        [suinleelab/monet]  zeroshot: 1 item(s)
+2026-06-11 12:39:29,807  INFO      Inference run complete.

@@ -1,0 +1,23 @@
+2026-06-11 14:58:53,445  INFO      Starting inference run
+2026-06-11 14:58:53,445  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-11 14:58:53,445  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-11 14:58:53,445  INFO      ============================================================
+2026-06-11 14:58:53,445  INFO      DEVICE CHECK
+2026-06-11 14:58:53,445  INFO      ============================================================
+2026-06-11 14:58:53,445  INFO      PyTorch version : 2.6.0+cu124
+2026-06-11 14:58:53,587  INFO      CUDA available  : YES  (1 device)
+2026-06-11 14:58:53,591  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-11 14:58:53,591  INFO      Active device   : cuda
+2026-06-11 14:58:53,591  INFO      ============================================================
+2026-06-11 14:59:02,127  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-11 14:59:02,397  WARNING   Caption task requested but DERM1M_ENTRIES is empty — skipping.
+2026-06-11 14:59:02,398  WARNING   Zero-shot task requested but HAM_IMAGES is empty — skipping HAM zero-shot.
+2026-06-11 14:59:02,398  INFO      PAD zero-shot task ready — 5 sample(s), 6 classes.
+2026-06-11 14:59:02,398  INFO      Daffodil zero-shot task ready — 5 sample(s), 5 classes.
+2026-06-11 14:59:02,398  INFO      
+────────────────────────────────────────────────────────────
+2026-06-11 14:59:02,398  INFO      Loading model: suinleelab/monet
+2026-06-11 14:59:02,398  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-11 14:59:05,884  INFO        Running zero-shot task PAD (budget=64)
+2026-06-11 15:40:45,361  INFO        Zero-shot results saved → results/zeroshot/suinleelab_monet (PAD)
+2026-06-11 15:40:45,361  INFO        Running zero-shot task Daffodil (budget=64)

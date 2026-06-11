@@ -1,0 +1,27 @@
+2026-06-11 12:43:49,014  INFO      Starting inference run
+2026-06-11 12:43:49,014  INFO      Tasks        : ['caption', 'zeroshot']
+2026-06-11 12:43:49,014  INFO      Output dir   : /home/jmali/XAI/derm-overview/results
+2026-06-11 12:43:49,014  INFO      ============================================================
+2026-06-11 12:43:49,015  INFO      DEVICE CHECK
+2026-06-11 12:43:49,015  INFO      ============================================================
+2026-06-11 12:43:49,015  INFO      PyTorch version : 2.6.0+cu124
+2026-06-11 12:43:49,148  INFO      CUDA available  : YES  (1 device)
+2026-06-11 12:43:49,152  INFO        GPU 0: NVIDIA A100 80GB PCIe  |  Compute 8.0  |  VRAM 79.3 GB
+2026-06-11 12:43:49,152  INFO      Active device   : cuda
+2026-06-11 12:43:49,152  INFO      ============================================================
+2026-06-11 12:43:58,294  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-11 12:43:58,312  WARNING   Caption task requested but DERM1M_ENTRIES is empty — skipping.
+2026-06-11 12:43:58,313  WARNING   Zero-shot task requested but HAM_IMAGES is empty — skipping HAM zero-shot.
+2026-06-11 12:43:58,313  INFO      PAD zero-shot task ready — 1 sample(s), 6 classes.
+2026-06-11 12:43:58,313  WARNING   Daffodil zero-shot not loaded or empty — skipping Daffodil dataset.
+2026-06-11 12:43:58,313  INFO      
+────────────────────────────────────────────────────────────
+2026-06-11 12:43:58,313  INFO      Loading model: suinleelab/monet
+2026-06-11 12:43:58,313  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-11 12:44:01,525  INFO        Running zero-shot task PAD (budget=64)
+2026-06-11 12:54:24,005  INFO        Zero-shot results saved → results/zeroshot/suinleelab_monet (PAD)
+2026-06-11 12:54:24,174  INFO        GPU memory after cleanup: 0.01 GB allocated, 0.02 GB reserved
+2026-06-11 12:54:24,174  INFO      
+All models done.
+2026-06-11 12:54:24,174  INFO        [suinleelab/monet]  zeroshot: 1 item(s)
+2026-06-11 12:54:24,175  INFO      Inference run complete.

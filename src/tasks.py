@@ -87,7 +87,12 @@ class ZeroShotTask(Task):
             if self.explain_classes == "all":
                 indices = range(len(self.class_names))
             elif self.explain_classes == "top1":
-                indices = [int(torch.argmax(probs).item())]
+                # pick the single top class only if its probability exceeds 0.5
+                max_prob, max_idx = torch.max(probs, dim=0)
+                if max_prob < 0.50:
+                    # skip this sample when the model isn't confident
+                    continue
+                indices = [int(max_idx.item())]
             else:  # topk
                 indices = torch.topk(probs, self.top_k).indices.tolist()
 
