@@ -128,63 +128,72 @@ MODELS = [
         "name": "ViT-B-16",
         "backend": "open_clip",
         "pretrained": "openai",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
+        "budget_caption": 2**19,
+        "budget_zeroshot": 2**19,
     },
-    {
-        "name": "ViT-B-16-SigLIP-256",
-        "backend": "open_clip",
-        "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
-        "hf_tokenizer_max_length": 64,
-        "pretrained": "webli",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
-    },
-    {
-        "name": "coca_ViT-B-32",
-        "backend": "open_clip",
-        "pretrained": "laion2b_s13b_b90k",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
-    },
+    # {
+    #     "name": "ViT-B-16-SigLIP-256",
+    #     "backend": "open_clip",
+    #     "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
+    #     "hf_tokenizer_max_length": 64,
+    #     "pretrained": "webli",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
+    # },
+    # {
+    #     "name": "coca_ViT-B-32",
+    #     "backend": "open_clip",
+    #     "pretrained": "laion2b_s13b_b90k",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
+    # },
 
     # # ── Biomedical VLMs ───────────────────────────────────────────
-    {
-        "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        "backend": "open_clip",
-        "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        "budget_caption": 256,
-        "budget_zeroshot": 64,
-    },
-    {
-        "name": "hf-hub:redlessone/DermLIP_ViT-B-16",
-        "backend": "open_clip",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
-    },
-    {
-        "name": "suinleelab/monet",
-        "backend": "huggingface",
-        "budget_zeroshot": 64,
-    },
+    # {
+    #     "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+    #     "backend": "open_clip",
+    #     "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+    #     "budget_caption": 256,
+    #     "budget_zeroshot": 64,
+    # },
+    # {
+    #     "name": "hf-hub:redlessone/DermLIP_ViT-B-16",
+    #     "backend": "open_clip",
+    #     "budget_caption": 1024,
+    #     "budget_zeroshot": 256,
+    # },
+    # {
+    #     "name": "suinleelab/monet",
+    #     "backend": "huggingface",
+    #     "budget_zeroshot": 64,
+    # },
 ]
 
 DERM1M_ENTRIES = [
-    {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
-    # {"filename": "IIYI/2281_1.png", "index": 126},
+    # {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
+    # {"filename": "pubmed/d5_e8_PMC3291114_DRP2012_925023.004.png", "index": 37},
+    # {"filename": "pubmed/00_39_PMC10381143_jimaging-09-00148-g011_1.jpg", "index": 151106},
+    # {"filename": "youtube/XwA-mCenqm4_frame_481_0.jpg", "index": 141},
+    # {"filename": "youtube/5Fe4aaMKiWE_frame_1051_0_0.jpg", "index": 1356},
+    # {"filename": "youtube/Y5AL8FruOJE_frame_12081_0_0.jpg", "index": 1698},
+    # {"filename": "IIYI/27732_1.png", "index": 3846},
+    # {"filename": "IIYI/18845_2.png", "index": 8098},
+    # {"filename": "IIYI/20344_2.png", "index": 21523},
 ]
 
 HAM7 = [
-    "melanocytic nevus",
-    "melanoma",
-    "basal cell carcinoma",
-    "benign keratosis",
-    "actinic keratosis",
-    "vascular lesion",
-    "dermatofibroma",
+    "black dog next to a yellow hydrant"
+    # "melanocytic nevus",
+    # "melanoma",
+    # "basal cell carcinoma",
+    # "benign keratosis",
+    # "actinic keratosis",
+    # "vascular lesion",
+    # "dermatofibroma",
 ]
 
 HAM_IMAGES = [
+    "sanity_check/dog_and_hydrant.jpg"
     # "ham_images/sample_0_melanocytic_Nevi.jpg",
     # "ham_images/sample_1_melanocytic_Nevi.jpg",
     # "ham_images/sample_2_melanoma.jpg",
@@ -194,27 +203,27 @@ HAM_IMAGES = [
 
 # PAD_ROOT = "pad_images"
 PAD_LABELS = [
-    "melanoma",
-    "basal cell carcinoma",
-    "actinic keratosis",
-    "benign keratosis",
-    "vascular lesion",
-    "dermatofibroma",
+    # "melanoma",
+    # "basal cell carcinoma",
+    # "actinic keratosis",
+    # "benign keratosis",
+    # "vascular lesion",
+    # "dermatofibroma",
 ]
 
 PAD_IMAGES = [
     # "pad_images/PAT_53_82_657.png"
-    ]
+]
 
 PAD_TARGETS = []
 
 # DAFFODIL_ROOT = "daffodil_images"
 DAFFODIL_LABELS = [
-    "acne",
-    "hyperpigmentation",
-    "nail psoriasis",
-    "sjs ten",
-    "vitiligo",
+    # "acne",
+    # "hyperpigmentation",
+    # "nail psoriasis",
+    # "sjs ten",
+    # "vitiligo",
 ]
 
 DAFFODIL_IMAGES = []
@@ -367,7 +376,7 @@ def main() -> None:
                     ZeroShotTask(
                         samples=ham_samples,
                         class_names=HAM7,
-                        prompt_template=lambda c: f"This image shows a case of {c}",
+                        prompt_template=lambda c: f"{c}",
                         explain_classes="top1",
                         top_k=3,
                     ),
@@ -423,7 +432,7 @@ def main() -> None:
                 InsDelTask(
                     samples=ham_samples,
                     class_names=HAM7,
-                    prompt_template=lambda c: f"This image shows a case of {c}",
+                    prompt_template=lambda c: f"{c}",
                     explain_classes="top1",
                     budget=args.budget_ins_del,
                     p=args.ins_del_p,

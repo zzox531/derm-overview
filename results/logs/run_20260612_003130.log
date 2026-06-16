@@ -1,0 +1,49 @@
+2026-06-12 00:31:30,421  INFO      Starting inference run
+2026-06-12 00:31:30,421  INFO      Tasks        : ['caption', 'ins_del']
+2026-06-12 00:31:30,422  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-12 00:31:30,422  INFO      ============================================================
+2026-06-12 00:31:30,422  INFO      DEVICE CHECK
+2026-06-12 00:31:30,422  INFO      ============================================================
+2026-06-12 00:31:30,422  INFO      PyTorch version : 2.6.0+cu124
+2026-06-12 00:31:30,471  INFO      CUDA available  : YES  (1 device)
+2026-06-12 00:31:30,475  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-12 00:31:30,475  INFO      Active device   : cuda
+2026-06-12 00:31:30,475  INFO      ============================================================
+2026-06-12 00:31:42,524  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-12 00:31:42,531  INFO      Loading Derm1M dataset
+2026-06-12 00:31:42,894  WARNING   Using the latest cached version of the dataset since redlessone/Derm1M couldn't be found on the Hugging Face Hub
+2026-06-12 00:31:42,899  WARNING   Found the latest cached dataset configuration 'default' at /home/ik448298/.cache/huggingface/datasets/redlessone___derm1_m/default/0.0.0/3c1da1beeae41027b73d5aa8e9b4ec4c5dc83ad7 (last modified on Tue Jun  9 22:59:12 2026).
+2026-06-12 00:31:43,045  INFO      Caption task ready — 3 sample(s).
+2026-06-12 00:31:43,045  INFO      
+────────────────────────────────────────────────────────────
+2026-06-12 00:31:43,045  INFO      Loading model: hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,046  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-12 00:31:43,046  INFO      Parsing model identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,046  INFO      Attempting to load config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,189  INFO      Loaded model config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,325  INFO      Found default weights file on HF Hub: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:43,325  INFO      Instantiating model architecture: CLIP
+2026-06-12 00:31:44,930  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:45,096  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 00:31:45,096  INFO      Model hf-hub:redlessone/DermLIP_ViT-B-16 creation process complete.
+2026-06-12 00:31:45,096  INFO      Parsing tokenizer identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,097  INFO      Attempting to load config from hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,236  INFO      Using default SimpleTokenizer.
+2026-06-12 00:31:45,333  INFO      Parsing model identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,334  INFO      Attempting to load config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,476  INFO      Loaded model config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,629  INFO      Found default weights file on HF Hub: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:45,630  INFO      Instantiating model architecture: CLIP
+2026-06-12 00:31:47,226  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:47,389  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 00:31:47,389  INFO      Model hf-hub:redlessone/DermLIP_ViT-B-16 creation process complete.
+2026-06-12 00:31:47,705  INFO      Parsing tokenizer identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:47,705  INFO      Attempting to load config from hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:47,845  INFO      Using default SimpleTokenizer.
+2026-06-12 00:31:47,928  INFO        Running caption task (budget=1024, ins_del -> results/ins_del/hf-hub_redlessone_DermLIP_ViT-B-16)
+2026-06-12 00:44:42,795  INFO        Caption results saved → results/caption/hf-hub_redlessone_DermLIP_ViT-B-16
+2026-06-12 00:44:43,041  INFO        GPU memory after cleanup: 0.01 GB allocated, 0.02 GB reserved
+2026-06-12 00:44:43,041  INFO      
+All models done.
+2026-06-12 00:44:43,041  INFO        [hf-hub:redlessone/DermLIP_ViT-B-16]  caption: 3 item(s)
+2026-06-12 00:44:43,042  INFO      Inference run complete.

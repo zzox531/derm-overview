@@ -1,0 +1,31 @@
+2026-06-12 01:06:46,391  INFO      Starting inference run
+2026-06-12 01:06:46,391  INFO      Tasks        : ['zeroshot']
+2026-06-12 01:06:46,391  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-12 01:06:46,392  INFO      ============================================================
+2026-06-12 01:06:46,392  INFO      DEVICE CHECK
+2026-06-12 01:06:46,392  INFO      ============================================================
+2026-06-12 01:06:46,392  INFO      PyTorch version : 2.6.0+cu124
+2026-06-12 01:06:46,431  INFO      CUDA available  : YES  (1 device)
+2026-06-12 01:06:46,434  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-12 01:06:46,434  INFO      Active device   : cuda
+2026-06-12 01:06:46,434  INFO      ============================================================
+2026-06-12 01:06:59,400  WARNING   HF_TOKEN not set; private datasets may fail.
+2026-06-12 01:06:59,750  INFO      HAM zero-shot task ready — 1 sample(s), 1 classes.
+2026-06-12 01:06:59,750  INFO      PAD zero-shot task ready — 5 sample(s), 0 classes.
+2026-06-12 01:06:59,751  INFO      Daffodil zero-shot task ready — 5 sample(s), 0 classes.
+2026-06-12 01:06:59,751  INFO      
+────────────────────────────────────────────────────────────
+2026-06-12 01:06:59,751  INFO      Loading model: ViT-B-16
+2026-06-12 01:06:59,751  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-12 01:06:59,752  INFO      Parsing model identifier. Schema: None, Identifier: ViT-B-16
+2026-06-12 01:06:59,752  INFO      Loaded built-in ViT-B-16 model config.
+2026-06-12 01:06:59,961  INFO      Instantiating model architecture: CLIP
+2026-06-12 01:07:01,554  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--timm--vit_base_patch16_clip_224.openai/snapshots/977e3dd0ec55ab8da155f2fbeb6b5f54948b6e3d/open_clip_model.safetensors
+2026-06-12 01:07:01,816  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': (0.48145466, 0.4578275, 0.40821073), 'std': (0.26862954, 0.26130258, 0.27577711), 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 01:07:01,816  INFO      Model ViT-B-16 creation process complete.
+2026-06-12 01:07:02,150  INFO      Parsing tokenizer identifier. Schema: None, Identifier: ViT-B-16
+2026-06-12 01:07:02,150  INFO      Attempting to load config from built-in: ViT-B-16
+2026-06-12 01:07:02,150  INFO      Using default SimpleTokenizer.
+2026-06-12 01:07:02,228  INFO        Running zero-shot task HAM (budget=2048)
+2026-06-12 01:08:34,723  INFO        Zero-shot results saved → results/zeroshot/ViT-B-16 (HAM)
+2026-06-12 01:08:34,724  INFO        Running zero-shot task PAD (budget=2048)

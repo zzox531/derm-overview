@@ -34,7 +34,6 @@ def _build_game(model: LoadedModel, sample, batch_size: int = 32):
             input_image=sample.image,
             input_text=sample.text,
             batch_size=batch_size,
-            batch_size=batch_size,
         )
     return src.game_openclip.OpenCLIPGame(
         model=model.model,
@@ -152,7 +151,7 @@ def explain(
             p=p,
             random_state=random_state,
         )
-        iv = approximator.approximate_crossmodal(game=game, budget=budget)
+        iv = approximator.approximate_crossmodal(game=game, budget=budget, chunk_rows=8192)
         item_result = {
             "identifier": sample.identifier,
             "target_class": item.target_class,

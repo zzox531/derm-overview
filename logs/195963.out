@@ -1,0 +1,74 @@
+2026-06-11 23:55:17,689  INFO      Starting inference run
+2026-06-11 23:55:17,689  INFO      Tasks        : ['caption', 'ins_del']
+2026-06-11 23:55:17,689  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-11 23:55:17,689  INFO      ============================================================
+2026-06-11 23:55:17,689  INFO      DEVICE CHECK
+2026-06-11 23:55:17,689  INFO      ============================================================
+2026-06-11 23:55:17,689  INFO      PyTorch version : 2.6.0+cu124
+2026-06-11 23:55:17,727  INFO      CUDA available  : YES  (1 device)
+2026-06-11 23:55:17,731  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-11 23:55:17,731  INFO      Active device   : cuda
+2026-06-11 23:55:17,731  INFO      ============================================================
+2026-06-11 23:55:29,953  WARNING   HF_TOKEN not set; private datasets may fail.
+['pad_images/PAT_304_4186_458.png', 'pad_images/PAT_230_1008_673.png', 'pad_images/PAT_110_397_52.png', 'pad_images/PAT_460_894_401.png', 'pad_images/PAT_100_393_595.png']
+['Actinic Keratosis', 'Actinic Keratosis', 'Actinic Keratosis', 'Basal Cell Carcinoma', 'Nevus']
+['daffodil_images/flip-1143__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg', 'daffodil_images/Crop-0350_0300lp-pigmentosus1__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Resize-450_400psoriatic-nail-010__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/flip-1sjs-ten-oral-7__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Crop-100350_100300vitiligo-19__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg']
+['acne', 'hyperpigmentation', 'nail psoriasis', 'sjs ten', 'vitiligo']
+2026-06-11 23:55:29,966  INFO      Loading Derm1M dataset
+2026-06-11 23:55:30,305  WARNING   Using the latest cached version of the dataset since redlessone/Derm1M couldn't be found on the Hugging Face Hub
+2026-06-11 23:55:30,310  WARNING   Found the latest cached dataset configuration 'default' at /home/ik448298/.cache/huggingface/datasets/redlessone___derm1_m/default/0.0.0/3c1da1beeae41027b73d5aa8e9b4ec4c5dc83ad7 (last modified on Tue Jun  9 22:59:12 2026).
+2026-06-11 23:55:30,567  INFO      Caption task ready — 9 sample(s).
+2026-06-11 23:55:30,567  INFO      
+────────────────────────────────────────────────────────────
+2026-06-11 23:55:30,567  INFO      Loading model: hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:30,568  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-11 23:55:30,568  INFO      Parsing model identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:30,568  INFO      Attempting to load config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:30,744  INFO      Loaded model config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:30,950  INFO      Found default weights file on HF Hub: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-11 23:55:30,950  INFO      Instantiating model architecture: CLIP
+2026-06-11 23:55:32,548  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-11 23:55:32,697  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-11 23:55:32,697  INFO      Model hf-hub:redlessone/DermLIP_ViT-B-16 creation process complete.
+2026-06-11 23:55:32,697  INFO      Parsing tokenizer identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:32,697  INFO      Attempting to load config from hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:32,842  INFO      Using default SimpleTokenizer.
+2026-06-11 23:55:32,925  INFO      Parsing model identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:32,925  INFO      Attempting to load config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:33,075  INFO      Loaded model config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:33,211  INFO      Found default weights file on HF Hub: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-11 23:55:33,211  INFO      Instantiating model architecture: CLIP
+2026-06-11 23:55:34,802  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-11 23:55:34,950  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-11 23:55:34,951  INFO      Model hf-hub:redlessone/DermLIP_ViT-B-16 creation process complete.
+2026-06-11 23:55:35,293  INFO      Parsing tokenizer identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:35,294  INFO      Attempting to load config from hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-11 23:55:35,444  INFO      Using default SimpleTokenizer.
+2026-06-11 23:55:35,527  INFO        Running caption task (budget=1024, ins_del -> results/ins_del/hf-hub_redlessone_DermLIP_ViT-B-16)
+
+--> derm_train_images/pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=-0.3186  (full=0.2542, empty=0.2351)  → 0d_59_PMC4458964_IJD_60_321e_g003_0_pred__curves.png
+n_players_image: 196
+n_players_text: 10
+iv.n_players: 206
+iv index: FWBII
+player index range in iv: 0 to 205
+Text:  ['le', 'sions', 'on', 'the', 'left', 'side', 'of', 'the', 'face', '.'] Word dimensions: [(np.float64(19.875), np.float64(23.0)), (np.float64(57.125), np.float64(23.0)), (np.float64(27.625), np.float64(23.0)), (np.float64(36.375), np.float64(23.0)), (np.float64(36.125), np.float64(23.0)), (np.float64(45.625), np.float64(23.0)), (np.float64(21.5), np.float64(23.0)), (np.float64(36.375), np.float64(23.0)), (np.float64(47.375), np.float64(23.0)), (np.float64(7.0), np.float64(23.0))]
+
+--> derm_train_images/pubmed/d5_e8_PMC3291114_DRP2012_925023.004.png
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=-0.0932  (full=0.2768, empty=0.2473)  → d5_e8_PMC3291114_DRP2012_925023.004_pred__curves.png
+n_players_image: 196
+n_players_text: 17
+iv.n_players: 213
+iv index: FWBII
+player index range in iv: 0 to 212
+Text:  ['an', 'appearance', 'of', 'an', 'ec', 'topic', 'nail', 'in', 'a', '7', '-', 'year', '-', 'old', 'japanese', 'man', '.'] Word dimensions: [(np.float64(27.625), np.float64(23.0)), (np.float64(131.875), np.float64(23.0)), (np.float64(21.5), np.float64(23.0)), (np.float64(27.625), np.float64(23.0)), (np.float64(25.875), np.float64(23.0)), (np.float64(55.0), np.float64(23.0)), (np.float64(40.125), np.float64(23.0)), (np.float64(20.25), np.float64(23.0)), (np.float64(13.625), np.float64(23.0)), (np.float64(14.125), np.float64(23.0)), (np.float64(8.125), np.float64(23.0)), (np.float64(49.625), np.float64(23.0)), (np.float64(8.125), np.float64(23.0)), (np.float64(34.0), np.float64(23.0)), (np.float64(100.5), np.float64(23.0)), (np.float64(49.25), np.float64(23.0)), (np.float64(7.0), np.float64(23.0))]
+
+--> derm_train_images/pubmed/00_39_PMC10381143_jimaging-09-00148-g011_1.jpg
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=1.0365  (full=0.2360, empty=0.2432)  → 00_39_PMC10381143_jimaging-09-00148-g011_1_pred__curves.png

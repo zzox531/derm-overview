@@ -1,0 +1,46 @@
+2026-06-12 00:59:24,231  INFO      Starting inference run
+2026-06-12 00:59:24,232  INFO      Tasks        : ['zeroshot']
+2026-06-12 00:59:24,232  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-12 00:59:24,232  INFO      ============================================================
+2026-06-12 00:59:24,232  INFO      DEVICE CHECK
+2026-06-12 00:59:24,232  INFO      ============================================================
+2026-06-12 00:59:24,232  INFO      PyTorch version : 2.6.0+cu124
+2026-06-12 00:59:24,273  INFO      CUDA available  : YES  (1 device)
+2026-06-12 00:59:24,276  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-12 00:59:24,276  INFO      Active device   : cuda
+2026-06-12 00:59:24,276  INFO      ============================================================
+2026-06-12 00:59:36,210  WARNING   HF_TOKEN not set; private datasets may fail.
+['pad_images/PAT_304_4186_458.png', 'pad_images/PAT_230_1008_673.png', 'pad_images/PAT_110_397_52.png', 'pad_images/PAT_460_894_401.png', 'pad_images/PAT_100_393_595.png']
+['Actinic Keratosis', 'Actinic Keratosis', 'Actinic Keratosis', 'Basal Cell Carcinoma', 'Nevus']
+['daffodil_images/flip-1143__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg', 'daffodil_images/Crop-0350_0300lp-pigmentosus1__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Resize-450_400psoriatic-nail-010__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/flip-1sjs-ten-oral-7__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Crop-100350_100300vitiligo-19__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg']
+['acne', 'hyperpigmentation', 'nail psoriasis', 'sjs ten', 'vitiligo']
+2026-06-12 00:59:36,555  INFO      HAM zero-shot task ready — 1 sample(s), 1 classes.
+2026-06-12 00:59:36,555  INFO      PAD zero-shot task ready — 5 sample(s), 0 classes.
+2026-06-12 00:59:36,555  INFO      Daffodil zero-shot task ready — 5 sample(s), 0 classes.
+2026-06-12 00:59:36,555  INFO      
+────────────────────────────────────────────────────────────
+2026-06-12 00:59:36,555  INFO      Loading model: ViT-B-16
+2026-06-12 00:59:36,556  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-12 00:59:36,556  INFO      Parsing model identifier. Schema: None, Identifier: ViT-B-16
+2026-06-12 00:59:36,556  INFO      Loaded built-in ViT-B-16 model config.
+2026-06-12 00:59:36,759  INFO      Instantiating model architecture: CLIP
+2026-06-12 00:59:38,348  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--timm--vit_base_patch16_clip_224.openai/snapshots/977e3dd0ec55ab8da155f2fbeb6b5f54948b6e3d/open_clip_model.safetensors
+2026-06-12 00:59:38,533  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': (0.48145466, 0.4578275, 0.40821073), 'std': (0.26862954, 0.26130258, 0.27577711), 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 00:59:38,533  INFO      Model ViT-B-16 creation process complete.
+2026-06-12 00:59:38,857  INFO      Parsing tokenizer identifier. Schema: None, Identifier: ViT-B-16
+2026-06-12 00:59:38,858  INFO      Attempting to load config from built-in: ViT-B-16
+2026-06-12 00:59:38,858  INFO      Using default SimpleTokenizer.
+2026-06-12 00:59:38,938  INFO        Running zero-shot task HAM (budget=256)
+
+--- Predictions for sanity_check/dog_and_hydrant.jpg ---
+  dog                      : logit=26.359 prob=1.0000
+
+--> sanity_check/dog_and_hydrant.jpg | class='dog' prob=1.000
+n_players_image: 196
+n_players_text: 1
+iv.n_players: 197
+iv index: FWBII
+player index range in iv: 0 to 196
+Text:  ['dog'] Word dimensions: [(np.float64(41.875), np.float64(23.0))]
+2026-06-12 01:00:47,803  INFO        Zero-shot results saved → results/zeroshot/ViT-B-16 (HAM)
+2026-06-12 01:00:47,805  INFO        Running zero-shot task PAD (budget=256)

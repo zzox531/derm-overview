@@ -14,4 +14,4 @@ source ~/miniconda3/etc/profile.d/conda.sh   # adjust path if needed
 
 conda activate dermlip_entropy
 
-python3 inference_entropy.py --tasks caption zeroshot ins_del
+python3 inference_entropy.py --tasks zeroshot

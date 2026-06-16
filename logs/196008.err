@@ -1,0 +1,21 @@
+/home/ik448298/miniconda3/envs/dermlip_entropy/lib/python3.12/site-packages/open_clip/factory.py:450: UserWarning: QuickGELU mismatch between final model config (quick_gelu=False) and pretrained tag 'openai' (quick_gelu=True).
+  warnings.warn(
+/home/ik448298/XAI/derm-overview/src/utils.py:42: UserWarning: Index `FWBII` is not a valid interaction index. Valid indices are: SII, BII, CHII, Co-Moebius, SGV, BGV, CHGV, IGV, EGV, k-SII, STII, FSII, kADD-SHAP, FBII, SV, BV, JointSV, Moebius, ELC.
+  return shapiq.InteractionValues(
+/home/ik448298/miniconda3/envs/dermlip_entropy/lib/python3.12/site-packages/shapiq/interaction_values.py:707: UserWarning: Index `FWBII` is not a valid interaction index. Valid indices are: SII, BII, CHII, Co-Moebius, SGV, BGV, CHGV, IGV, EGV, k-SII, STII, FSII, kADD-SHAP, FBII, SV, BV, JointSV, Moebius, ELC.
+  return InteractionValues(
+/home/ik448298/XAI/derm-overview/src/utils.py:175: UserWarning: Index `FWBII` is not a valid interaction index. Valid indices are: SII, BII, CHII, Co-Moebius, SGV, BGV, CHGV, IGV, EGV, k-SII, STII, FSII, kADD-SHAP, FBII, SV, BV, JointSV, Moebius, ELC.
+  return shapiq.InteractionValues(
+Traceback (most recent call last):
+  File "/home/ik448298/XAI/derm-overview/inference_entropy.py", line 613, in <module>
+    main()
+  File "/home/ik448298/XAI/derm-overview/inference_entropy.py", line 551, in main
+    zs_results = explain(
+                 ^^^^^^^^
+  File "/home/ik448298/XAI/derm-overview/src/runner.py", line 133, in explain
+    for item in task.iter_samples(model):
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ik448298/XAI/derm-overview/src/tasks.py", line 91, in iter_samples
+    max_prob, max_idx = torch.max(probs, dim=0)
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+IndexError: max(): Expected reduction dim 0 to have non-zero size.

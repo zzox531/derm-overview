@@ -1,0 +1,11 @@
+2026-06-11 23:52:29,678  INFO      Starting inference run
+2026-06-11 23:52:29,678  INFO      Tasks        : ['caption', 'ins_del']
+2026-06-11 23:52:29,679  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-11 23:52:29,679  INFO      ============================================================
+2026-06-11 23:52:29,679  INFO      DEVICE CHECK
+2026-06-11 23:52:29,679  INFO      ============================================================
+2026-06-11 23:52:29,679  INFO      PyTorch version : 2.6.0+cu124
+2026-06-11 23:52:29,718  INFO      CUDA available  : YES  (1 device)
+2026-06-11 23:52:29,721  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-11 23:52:29,721  INFO      Active device   : cuda
+2026-06-11 23:52:29,721  INFO      ============================================================

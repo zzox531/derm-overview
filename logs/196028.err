@@ -1,0 +1,4 @@
+/home/ik448298/miniconda3/envs/dermlip_entropy/lib/python3.12/site-packages/open_clip/factory.py:450: UserWarning: QuickGELU mismatch between final model config (quick_gelu=False) and pretrained tag 'openai' (quick_gelu=True).
+  warnings.warn(
+/opt/slurm/spool/slurmd/job196028/slurm_script: line 17: 1499398 Killed                  python3 inference_entropy.py --tasks zeroshot
+slurmstepd: error: Detected 1 oom_kill event in StepId=196028.batch. Some of the step tasks have been OOM Killed.

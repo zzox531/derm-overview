@@ -660,6 +660,8 @@ def run_and_save(
 
     # Determine IV order and dispatch accordingly.
     iv_order = _get_iv_order(iv) if iv is not None else 1
+    
+    print("Order: ", iv_order)
 
     if iv is None:
         # No IV supplied: fall back to Monte Carlo first-order attributions.
