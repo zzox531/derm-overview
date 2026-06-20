@@ -1,2 +1,4 @@
 .venv
 hf_token
+*.err
+*.out
