@@ -6,8 +6,6 @@ import scipy as sp
 
 from . import sampler
 
-# --- new helper: chunked normal equations -----------------------------------
-
 def _build_interaction_columns(coalition_chunk: np.ndarray,
                                interactions: list[tuple[int, ...]]) -> np.ndarray:
     """Build the regression-matrix block for a chunk of coalitions.
@@ -47,10 +45,7 @@ def _accumulate_normal_equations(coalition_iter, value_iter, weight_iter,
 
 
 def _solve_normal_equations(XtWX: np.ndarray, XtWy: np.ndarray) -> np.ndarray:
-    try:
-        return np.linalg.solve(XtWX, XtWy)
-    except np.linalg.LinAlgError:
-        return np.linalg.lstsq(XtWX, XtWy, rcond=None)[0]
+    return np.linalg.lstsq(XtWX, XtWy, rcond=None)[0]
 
 class FIxLIP:
     """
