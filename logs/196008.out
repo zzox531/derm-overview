@@ -1,0 +1,50 @@
+2026-06-12 00:44:50,287  INFO      Starting inference run
+2026-06-12 00:44:50,288  INFO      Tasks        : ['zeroshot', 'ins_del']
+2026-06-12 00:44:50,288  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-12 00:44:50,288  INFO      ============================================================
+2026-06-12 00:44:50,288  INFO      DEVICE CHECK
+2026-06-12 00:44:50,288  INFO      ============================================================
+2026-06-12 00:44:50,288  INFO      PyTorch version : 2.6.0+cu124
+2026-06-12 00:44:50,325  INFO      CUDA available  : YES  (1 device)
+2026-06-12 00:44:50,328  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-12 00:44:50,329  INFO      Active device   : cuda
+2026-06-12 00:44:50,329  INFO      ============================================================
+2026-06-12 00:45:02,479  WARNING   HF_TOKEN not set; private datasets may fail.
+['pad_images/PAT_304_4186_458.png', 'pad_images/PAT_230_1008_673.png', 'pad_images/PAT_110_397_52.png', 'pad_images/PAT_460_894_401.png', 'pad_images/PAT_100_393_595.png']
+['Actinic Keratosis', 'Actinic Keratosis', 'Actinic Keratosis', 'Basal Cell Carcinoma', 'Nevus']
+['daffodil_images/flip-1143__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg', 'daffodil_images/Crop-0350_0300lp-pigmentosus1__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Resize-450_400psoriatic-nail-010__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/flip-1sjs-ten-oral-7__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Crop-100350_100300vitiligo-19__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg']
+['acne', 'hyperpigmentation', 'nail psoriasis', 'sjs ten', 'vitiligo']
+2026-06-12 00:45:02,887  INFO      HAM zero-shot task ready — 1 sample(s), 1 classes.
+2026-06-12 00:45:02,888  INFO      PAD zero-shot task ready — 5 sample(s), 0 classes.
+2026-06-12 00:45:02,888  INFO      Daffodil zero-shot task ready — 5 sample(s), 0 classes.
+2026-06-12 00:45:02,888  INFO      
+────────────────────────────────────────────────────────────
+2026-06-12 00:45:02,888  INFO      Loading model: ViT-B-16
+2026-06-12 00:45:02,888  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-12 00:45:02,888  INFO      Parsing model identifier. Schema: None, Identifier: ViT-B-16
+2026-06-12 00:45:02,889  INFO      Loaded built-in ViT-B-16 model config.
+2026-06-12 00:45:03,239  INFO      Instantiating model architecture: CLIP
+2026-06-12 00:45:04,834  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--timm--vit_base_patch16_clip_224.openai/snapshots/977e3dd0ec55ab8da155f2fbeb6b5f54948b6e3d/open_clip_model.safetensors
+2026-06-12 00:45:05,013  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': (0.48145466, 0.4578275, 0.40821073), 'std': (0.26862954, 0.26130258, 0.27577711), 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 00:45:05,013  INFO      Model ViT-B-16 creation process complete.
+2026-06-12 00:45:05,347  INFO      Parsing tokenizer identifier. Schema: None, Identifier: ViT-B-16
+2026-06-12 00:45:05,347  INFO      Attempting to load config from built-in: ViT-B-16
+2026-06-12 00:45:05,347  INFO      Using default SimpleTokenizer.
+2026-06-12 00:45:05,428  INFO        Running zero-shot task HAM (budget=256, ins_del -> results/ins_del/ViT-B-16)
+
+--- Predictions for sanity_check/dog_and_hydrant.jpg ---
+  black dog next to a yellow hydrant: logit=34.875 prob=1.0000
+
+--> sanity_check/dog_and_hydrant.jpg | class='black dog next to a yellow hydrant' prob=1.000
+Order:  2
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=0.1781  (full=0.3486, empty=0.1998)  → dog_and_hydrant_pred_black_dog_next_to_a_yellow_hydrant_curves.png
+n_players_image: 196
+n_players_text: 8
+iv.n_players: 204
+iv index: FWBII
+player index range in iv: 0 to 203
+Text:  ['black', 'dog', 'next', 'to', 'a', 'yellow', 'hydr', 'ant'] Word dimensions: [(np.float64(59.125), np.float64(23.0)), (np.float64(41.875), np.float64(23.0)), (np.float64(49.125), np.float64(23.0)), (np.float64(22.375), np.float64(23.0)), (np.float64(13.625), np.float64(23.0)), (np.float64(71.0), np.float64(23.0)), (np.float64(50.5), np.float64(23.0)), (np.float64(36.375), np.float64(23.0))]
+2026-06-12 00:48:02,288  INFO        Zero-shot results saved → results/zeroshot/ViT-B-16 (HAM)
+2026-06-12 00:48:02,289  INFO        Running zero-shot task PAD (budget=256, ins_del -> results/ins_del/ViT-B-16)

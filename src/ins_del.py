@@ -1,21 +1,9 @@
 """
 src/ins_del.py — Insertion / Deletion experiment for vision-language models.
-
-Supports both first-order attribution values and second-order interaction values
-(Shapley / Banzhaf). For second-order IVs, greedy clique-based coalition building
-is used (src.clique) and a first-order baseline is computed via
-src.utils.convert_iv_to_first_order for comparison.
-
-Metrics
 -------
 AID  (Insertion vs Deletion):
-    mean(insertion_MIF_norm − deletion_MIF_norm)
+    mean(insertion_MIF_norm - deletion_MIF_norm)
     Higher is better.
-
-LIF-MIF gap (both orders):
-    mean(deletion_LIF_norm − deletion_MIF_norm)
-    Higher is better; measures how well the ordering separates important from
-    unimportant patches.
 """
 
 from __future__ import annotations
@@ -37,22 +25,17 @@ from src.tasks import InferenceResult, SampleInput, Task
 if TYPE_CHECKING:
     from src.model_loader import LoadedModel
 
-
-# ---------------------------------------------------------------------------
-# ImagePatcher
-# ---------------------------------------------------------------------------
-
 class ImagePatcher:
     def __init__(
         self,
         image: Image.Image,
         patch_size: int = 16,
         model_size: int = 224,
-        grey_value: int = 128,
+        fill_color: tuple = (128, 128, 128),
     ) -> None:
         self.patch_size = patch_size
         self.model_size = model_size
-        self.grey = np.array([grey_value] * 3, dtype=np.uint8)
+        self.grey = np.array(fill_color, dtype=np.uint8)
 
         resized = image.convert("RGB").resize((model_size, model_size), Image.BICUBIC)
         self.img_array = np.array(resized, dtype=np.uint8)
@@ -81,11 +64,6 @@ class ImagePatcher:
     @property
     def empty_coalition(self) -> np.ndarray:
         return np.zeros(self.n_patches, dtype=bool)
-
-
-# ---------------------------------------------------------------------------
-# Scoring helper
-# ---------------------------------------------------------------------------
 
 @torch.no_grad()
 def score_coalitions(
@@ -127,27 +105,12 @@ def score_coalitions(
 
     return np.concatenate(all_scores)
 
-
-# ---------------------------------------------------------------------------
-# Coalition-matrix builders
-# ---------------------------------------------------------------------------
-
-def _build_mif_from_attributions(
+def _build_mif_del_from_attributions(
     attribution_values: np.ndarray,
     empty_coalition: np.ndarray,
 ) -> np.ndarray:
-    """Build threshold-based MIF coalition matrix from 1-D attribution values.
-
-    MIF (Most-Important-First deletion):
-    starts near-full, removes highest patches first.
-    """
-
+    """Build MIF deletion coalition matrix from 1-D attribution values."""
     attribution_values = np.asarray(attribution_values).reshape(-1)
-
-    if attribution_values.ndim != 1:
-        raise ValueError(
-            f"Expected 1-D attribution array, got shape {attribution_values.shape}"
-        )
 
     if len(empty_coalition) != len(attribution_values):
         raise ValueError(
@@ -155,59 +118,44 @@ def _build_mif_from_attributions(
             f"vs attribution_values={len(attribution_values)}"
         )
 
-    attribution_values_sorted = np.sort(attribution_values)
+    n = len(attribution_values)
+    order = np.argsort(attribution_values)[::-1]
 
-    coalition_matrix_mif = np.stack(
-        [
-            np.asarray(
-                attribution_values <= v,
-                dtype=bool,
-            ).reshape(-1)
-            for v in attribution_values_sorted[::-1]
-        ]
-        + [
-            np.asarray(
-                empty_coalition,
-                dtype=bool,
-            ).reshape(-1)
-        ],
-        axis=0,
-    )
+    rows = [np.ones(n, dtype=bool)]
+    active = np.ones(n, dtype=bool)
+    for idx in order:
+        active = active.copy()
+        active[idx] = False
+        rows.append(active.copy())
 
-    return coalition_matrix_mif
+    rows[-1] = np.asarray(empty_coalition, dtype=bool).reshape(-1)
 
+    return np.stack(rows, axis=0)
 
 def _build_mif_ins_from_attributions(
     attribution_values: np.ndarray,
 ) -> np.ndarray:
     """Build MIF insertion coalition matrix from 1-D attribution values.
 
-    MIF insertion: starts empty, adds highest-attribution patches first.
-    Row i has the top-i patches active (by descending attribution).
-    Final row is the full coalition (all patches active).
+    Insertion MIF: starts with the empty coalition, then adds highest-attribution
+    patches first. Row 0 is the empty coalition; row i+1 has the top-i patches
+    active. Final row is the full coalition (all patches active).
     """
     attribution_values = np.asarray(attribution_values).reshape(-1)
     n = len(attribution_values)
 
-    # Indices sorted from highest to lowest attribution
     order = np.argsort(attribution_values)[::-1]
 
-    rows = []
+    rows = [np.zeros(n, dtype=bool)]
     active = np.zeros(n, dtype=bool)
     for idx in order:
         active = active.copy()
         active[idx] = True
         rows.append(active.copy())
 
-    # Ensure the final row is exactly full (guards against float ties)
     rows[-1] = np.ones(n, dtype=bool)
 
     return np.stack(rows, axis=0)
-
-
-# ---------------------------------------------------------------------------
-# Attribution via Monte Carlo (fallback when no IV available)
-# ---------------------------------------------------------------------------
 
 def compute_mc_attributions(
     patcher: ImagePatcher,
@@ -246,11 +194,6 @@ def compute_mc_attributions(
 
     return marginals / n_rounds
 
-
-# ---------------------------------------------------------------------------
-# Core experiment — first order
-# ---------------------------------------------------------------------------
-
 def run_insertion_deletion(
     patcher: ImagePatcher,
     text: str,
@@ -258,90 +201,57 @@ def run_insertion_deletion(
     attribution_values: np.ndarray,
     batch_size: int = 64,
 ) -> dict:
-
     n = patcher.n_patches
     empty_coalition = patcher.empty_coalition
 
-    coalition_matrix_del_mif = _build_mif_from_attributions(
+    coalition_matrix_del = _build_mif_del_from_attributions(
         attribution_values,
         empty_coalition,
     )
 
-    attribution_values_sorted = np.sort(attribution_values)
+    coalition_matrix_ins = _build_mif_ins_from_attributions(attribution_values)
 
-    coalition_matrix_ins_mif = np.stack(
-        [
-            attribution_values >= v
-            for v in attribution_values_sorted[::-1]
-        ]
-    )
-
-    assert coalition_matrix_del_mif[-1].sum() == 0, \
-        "Deletion MIF must end at empty coalition"
-
-    assert coalition_matrix_ins_mif[-1].sum() == n, \
+    assert coalition_matrix_del[-1].sum() == 0, \
+        "Deletion must end at empty coalition"
+    assert coalition_matrix_ins[-1].sum() == n, \
         "Insertion must end at full coalition"
 
     def _score(coalition_matrix: np.ndarray) -> np.ndarray:
         images = patcher.build_images(coalition_matrix)
-        return score_coalitions(
-            images,
-            text,
-            model,
-            batch_size,
-        )
+        return score_coalitions(images, text, model, batch_size)
 
     print("  [ins_del] Scoring deletion-MIF...", flush=True)
-    predictions_del_mif = _score(coalition_matrix_del_mif)
+    predictions_del = _score(coalition_matrix_del)
 
     print("  [ins_del] Scoring insertion-MIF...", flush=True)
-    predictions_ins_mif = _score(coalition_matrix_ins_mif)
+    predictions_ins = _score(coalition_matrix_ins)
 
-    v_full = float(predictions_del_mif[0])
-    v_empty = float(predictions_del_mif[-1])
-
-    denom = (
-        v_full - v_empty
-        if abs(v_full - v_empty) > 1e-8
-        else 1.0
-    )
+    v_full  = float(predictions_del[0])
+    v_empty = float(predictions_del[-1])
+    denom = v_full - v_empty if abs(v_full - v_empty) > 1e-8 else 1.0
 
     def _norm(arr: np.ndarray) -> np.ndarray:
         return (arr - v_empty) / denom
 
-    predictions_del_mif_norm = _norm(predictions_del_mif)
-    predictions_ins_mif_norm = _norm(predictions_ins_mif)
+    predictions_del_norm = _norm(predictions_del)
+    predictions_ins_norm = _norm(predictions_ins)
 
-    fractions_del_mif = (
-        coalition_matrix_del_mif.sum(axis=1) / n
-    )
+    fractions_del = coalition_matrix_del.sum(axis=1) / n
+    fractions_ins = coalition_matrix_ins.sum(axis=1) / n
 
-    fractions_ins_mif = (
-        coalition_matrix_ins_mif.sum(axis=1) / n
-    )
-
-    aid = float(
-        np.mean(
-            predictions_ins_mif_norm
-            - predictions_del_mif_norm[:n]
-        )
-    )
+    interp_ins = np.interp(fractions_del, fractions_ins, predictions_ins_norm)
+    aid = float(np.mean(interp_ins - predictions_del_norm))
 
     return {
         "order": 1,
-        "fractions_del_mif": fractions_del_mif,
-        "fractions_ins_mif": fractions_ins_mif,
-        "deletion_mif": predictions_del_mif_norm,
-        "insertion_mif": predictions_ins_mif_norm,
+        "fractions_del_mif": fractions_del,
+        "fractions_ins_mif": fractions_ins,
+        "deletion_mif": predictions_del_norm,
+        "insertion_mif": predictions_ins_norm,
         "aid": aid,
         "v_full": v_full,
         "v_empty": v_empty,
     }
-
-
-# ---------------------------------------------------------------------------
-# Core experiment — second order (clique-based)
-# ---------------------------------------------------------------------------
 
 def run_insertion_deletion_order2(
     patcher: ImagePatcher,
@@ -351,118 +261,54 @@ def run_insertion_deletion_order2(
     p_sampler: float = 0.5,
     batch_size: int = 64,
 ) -> dict:
-    import src.clique
     import src.utils
 
     n = patcher.n_patches
     empty_coalition = patcher.empty_coalition
 
-    # ---- First-order baseline (used for attribution-based insertion ordering
-    #      and start-player selection) ----
+    iv_first_order = src.utils.convert_iv_to_first_order(iv, p_sampler=p_sampler)
+    baseline_attribution = _extract_image_attributions(iv_first_order, n_image_patches=n)
 
-    iv_first_order = src.utils.convert_iv_to_first_order(
-        iv,
-        p_sampler=p_sampler,
-    )
+    coalition_matrix_del = _build_mif_del_from_attributions(baseline_attribution, empty_coalition)
 
-    baseline_attribution = _extract_image_attributions(
-        iv_first_order,
-        n_image_patches=n,
-    )
-
-    # ---- Clique-based deletion coalitions ----
-
-    if n > 100:
-        start_players = (
-            src.clique.get_interesting_starting_players(
-                attribution_values=baseline_attribution,
-                first_order_values=iv.get_n_order(1).values,
-                k=19,
-            )
-        )
-        coalition_matrix_del_mif, _ = (
-            src.clique.get_cliques_greedy_mif_lif(
-                iv=iv,
-                start_players=start_players,
-            )
-        )
-    else:
-        coalition_matrix_del_mif, _ = (
-            src.clique.get_cliques_greedy_mif_lif(iv=iv)
-        )
-
-    # Trim to image patches only (clique builder may include text tokens)
-    coalition_matrix_del_mif = coalition_matrix_del_mif[:, -n:]
-
-    # Deletion: rows go from near-full → empty; append guaranteed empty row
-    coalition_matrix_del_mif = np.concatenate(
-        (coalition_matrix_del_mif, [empty_coalition]),
-        axis=0,
-    )
-
-    # ---- Insertion: independently built from first-order attributions ----
-    # Starts empty and adds patches in most-important-first order.
-    # This is intentionally *different* from the deletion sequence so that
-    # the two curves are distinct and the AID metric is meaningful.
-    coalition_matrix_ins_mif = _build_mif_ins_from_attributions(
-        baseline_attribution,
-    )
+    coalition_matrix_ins = _build_mif_ins_from_attributions(baseline_attribution)
 
     def _score(coalition_matrix: np.ndarray) -> np.ndarray:
         images = patcher.build_images(coalition_matrix)
         return score_coalitions(images, text, model, batch_size)
 
     print("  [ins_del] Scoring deletion-MIF (order-2)...", flush=True)
-    predictions_del_mif = _score(coalition_matrix_del_mif)
+    predictions_del = _score(coalition_matrix_del)
 
     print("  [ins_del] Scoring insertion-MIF (order-2)...", flush=True)
-    predictions_ins_mif = _score(coalition_matrix_ins_mif)
+    predictions_ins = _score(coalition_matrix_ins)
 
-    # ---- Normalize ----
-    # Use the deletion curve's endpoints so both curves share the same scale.
-
-    v_full  = float(predictions_del_mif[0])
-    v_empty = float(predictions_del_mif[-1])
-
-    denom = (
-        v_full - v_empty
-        if abs(v_full - v_empty) > 1e-8
-        else 1.0
-    )
+    v_full  = float(predictions_del[0])
+    v_empty = float(predictions_del[-1])
+    denom = v_full - v_empty if abs(v_full - v_empty) > 1e-8 else 1.0
 
     def _norm(arr: np.ndarray) -> np.ndarray:
         return (arr - v_empty) / denom
 
-    predictions_del_mif_norm = _norm(predictions_del_mif)
-    predictions_ins_mif_norm = _norm(predictions_ins_mif)
+    predictions_del_norm = _norm(predictions_del)
+    predictions_ins_norm = _norm(predictions_ins)
 
-    fractions_del_mif = coalition_matrix_del_mif.sum(axis=1) / n
-    fractions_ins_mif = coalition_matrix_ins_mif.sum(axis=1) / n
+    fractions_del = coalition_matrix_del.sum(axis=1) / n
+    fractions_ins = coalition_matrix_ins.sum(axis=1) / n
 
-    # AID: compare over the shared fraction range (both have n steps after
-    # aligning, so we interpolate insertion onto deletion's fraction grid).
-    interp_ins = np.interp(
-        fractions_del_mif,
-        fractions_ins_mif,
-        predictions_ins_mif_norm,
-    )
-    aid = float(np.mean(interp_ins - predictions_del_mif_norm))
+    interp_ins = np.interp(fractions_del, fractions_ins, predictions_ins_norm)
+    aid = float(np.mean(interp_ins - predictions_del_norm))
 
     return {
         "order": 2,
-        "fractions_del_mif": fractions_del_mif,
-        "fractions_ins_mif": fractions_ins_mif,
-        "deletion_mif": predictions_del_mif_norm,
-        "insertion_mif": predictions_ins_mif_norm,
+        "fractions_del_mif": fractions_del,
+        "fractions_ins_mif": fractions_ins,
+        "deletion_mif": predictions_del_norm,
+        "insertion_mif": predictions_ins_norm,
         "aid": aid,
         "v_full": v_full,
         "v_empty": v_empty,
     }
-
-
-# ---------------------------------------------------------------------------
-# Output helpers
-# ---------------------------------------------------------------------------
 
 def plot_curves(
     results: dict,
@@ -471,42 +317,37 @@ def plot_curves(
     show: bool = False,
     smooth_sigma: float = 1.0,
 ) -> None:
+    """Plot insertion and deletion curves.
 
+    X-axis is "percentage of patches retained", reversed so that:
+      - Deletion runs left→right (100% → 0%): removes most important first
+      - Insertion runs right→left (0% → 100%): adds most important first
+    """
     order = results.get("order", 1)
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    def _smooth_and_pin(
-        arr: np.ndarray,
-        start_val: float,
-        end_val: float,
-    ) -> np.ndarray:
+    def _smooth_and_pin(arr: np.ndarray, start_val: float, end_val: float) -> np.ndarray:
         if smooth_sigma > 0:
             arr = gaussian_filter1d(arr.astype(float), sigma=smooth_sigma)
-            arr[0] = start_val
+            arr[0]  = start_val
             arr[-1] = end_val
         return arr
 
-    # Both order-1 and order-2 now share the same plotting logic
-    frac_del = results["fractions_del_mif"] * 100
-    frac_ins = results["fractions_ins_mif"] * 100
+    frac_del = results["fractions_del_mif"] * 100   # 100% → 0%
+    frac_ins = results["fractions_ins_mif"] * 100   # 0%   → 100%
 
-    del_mif = _smooth_and_pin(
-        results["deletion_mif"].astype(float),
-        1.0,
-        0.0,
-    )
-    ins_mif = _smooth_and_pin(
-        results["insertion_mif"].astype(float),
-        0.0,
-        1.0,
-    )
+    del_arr = results["deletion_mif"].astype(float)
+    ins_arr = results["insertion_mif"].astype(float)
 
-    label_suffix = " clique" if order == 2 else ""
+    del_curve = _smooth_and_pin(del_arr, del_arr[0], del_arr[-1])
+    ins_curve = _smooth_and_pin(ins_arr, ins_arr[0], ins_arr[-1])
+
+    label_suffix = " (2nd order)" if order == 2 else ""
 
     ax.plot(
         frac_del,
-        del_mif,
+        del_curve,
         color="#e05c2a",
         lw=2,
         ls="--",
@@ -519,7 +360,7 @@ def plot_curves(
 
     ax.plot(
         frac_ins,
-        ins_mif,
+        ins_curve,
         color="#2a7ae0",
         lw=2,
         ls="-",
@@ -531,14 +372,8 @@ def plot_curves(
 
     ax.set_xlim(100, 0)
 
-    ax.set_xlabel(
-        "Percentage of patches retained (%)",
-        fontsize=12,
-    )
-    ax.set_ylabel(
-        "Prediction change (normalised)",
-        fontsize=12,
-    )
+    ax.set_xlabel("Percentage of patches retained (%)", fontsize=12)
+    ax.set_ylabel("Prediction change (normalised)", fontsize=12)
     ax.legend(fontsize=9, loc="upper right")
     ax.set_title(title, fontsize=12, pad=10)
 
@@ -551,7 +386,6 @@ def plot_curves(
         plt.show()
 
     plt.close("all")
-
 
 def save_results_csv(results: dict, output_path: str) -> None:
     with open(output_path, "w", newline="") as f:
@@ -569,36 +403,25 @@ def save_results_csv(results: dict, output_path: str) -> None:
             results["insertion_mif"],
         ))
 
-
-# ---------------------------------------------------------------------------
-# Public entry point called from runner.py / explain()
-# ---------------------------------------------------------------------------
-
 def _extract_image_attributions(iv, n_image_patches: int) -> np.ndarray:
     if hasattr(iv, "get_n_order"):
-        first_order = iv.get_n_order(1)
-        all_values = first_order.values
-        if len(all_values) == n_image_patches:
-            return all_values.copy()
-        if len(all_values) > n_image_patches:
-            return all_values[-n_image_patches:].copy()
-        raise ValueError(
-            f"First-order IV has only {len(all_values)} entries "
-            f"but expected at least {n_image_patches} image patches."
-        )
+        # Index by player key explicitly — avoids assuming a particular ordering of .values.
+        try:
+            return np.array([iv[(i,)] for i in range(n_image_patches)])
+        except KeyError as exc:
+            raise ValueError(
+                f"Image patch player {exc} not found in interaction values."
+            ) from exc
 
     arr = np.asarray(iv)
     if arr.ndim != 1:
         raise ValueError(f"Expected 1-D attribution array, got shape {arr.shape}.")
-    if len(arr) == n_image_patches:
-        return arr.copy()
-    if len(arr) > n_image_patches:
-        return arr[-n_image_patches:].copy()
-    raise ValueError(
-        f"Attribution array has {len(arr)} entries "
-        f"but image has {n_image_patches} patches."
-    )
-
+    if len(arr) < n_image_patches:
+        raise ValueError(
+            f"Attribution array has {len(arr)} entries "
+            f"but image has {n_image_patches} patches."
+        )
+    return arr[:n_image_patches].copy()
 
 def _resolve_model_size(model: "LoadedModel") -> int:
     try:
@@ -615,29 +438,23 @@ def _resolve_model_size(model: "LoadedModel") -> int:
     except Exception:
         return 224
 
-
 def _get_iv_order(iv) -> int:
-    """Return the maximum interaction order stored in an IV object, or 1 if unknown."""
     if hasattr(iv, "max_order"):
         return int(iv.max_order)
     if hasattr(iv, "get_n_order"):
         try:
-            vals = iv.get_n_order(2).values
-            if len(vals) > 0:
+            if len(iv.get_n_order(2).values) > 0:
                 return 2
         except Exception:
             pass
     return 1
 
-
 def _get_p_sampler(iv) -> float:
-    """Recover the sampling probability used when computing a Banzhaf IV, or default 0.5."""
     if hasattr(iv, "sampling_weights"):
         w = np.asarray(iv.sampling_weights)
         if len(w) > 0:
             return float(w[0])
     return 0.5
-
 
 def run_and_save(
     *,
@@ -655,14 +472,14 @@ def run_and_save(
     patch_size = getattr(model, "patch_size", 16)
     model_size = _resolve_model_size(model)
 
-    patcher = ImagePatcher(sample.image, patch_size=patch_size, model_size=model_size)
+    fill_color = tuple(int(m * 255) for m in model.image_mean)
+    patcher = ImagePatcher(sample.image, patch_size=patch_size, model_size=model_size,
+                           fill_color=fill_color)
     n = patcher.n_patches
 
-    # Determine IV order and dispatch accordingly.
     iv_order = _get_iv_order(iv) if iv is not None else 1
 
     if iv is None:
-        # No IV supplied: fall back to Monte Carlo first-order attributions.
         attribution_values = compute_mc_attributions(
             patcher=patcher,
             text=sample.text,
@@ -672,7 +489,7 @@ def run_and_save(
             batch_size=batch_size,
             random_state=random_state,
         )
-        attr_path = output_dir / f"{sample.identifier.replace('/', '_')}_attr.npy"
+        attr_path = output_dir / f"{Path(sample.identifier).with_suffix('').as_posix().replace('/', '_')}_attr.npy"
         np.save(attr_path, attribution_values)
         results = run_insertion_deletion(
             patcher=patcher,
@@ -692,7 +509,7 @@ def run_and_save(
             batch_size=batch_size,
         )
 
-    else:  # order == 2
+    else:
         p_sampler = _get_p_sampler(iv)
         results = run_insertion_deletion_order2(
             patcher=patcher,
@@ -703,28 +520,22 @@ def run_and_save(
             batch_size=batch_size,
         )
 
-    # ---- Persist outputs -------------------------------------------------------
     order = results["order"]
 
     pred_class = (item.target_class or "").replace(" ", "_")
     img_stem = Path(sample.identifier).stem
     stem = f"{img_stem}_pred_{pred_class}"
 
-    csv_path = output_dir / f"{stem}_curves.csv"
+    csv_path  = output_dir / f"{stem}_curves.csv"
     plot_path = output_dir / f"{stem}_curves.png"
 
     save_results_csv(results, str(csv_path))
 
-    title_lines = [
-        f"Insertion / Deletion — {sample.identifier}"
-    ]
-
+    title_lines = [f"Insertion / Deletion — {sample.identifier}"]
     if item.target_class:
         title_lines.append(
-            f"class='{item.target_class}'  "
-            f"prob={item.probability:.3f}"
+            f"class='{item.target_class}'  prob={item.probability:.3f}"
         )
-
     title_lines.append(f"'{sample.text[:70]}'")
 
     plot_curves(
@@ -734,21 +545,14 @@ def run_and_save(
     )
 
     aid_str = f"  AID={results['aid']:.4f}" if "aid" in results else ""
-
     print(
         f"  [ins_del] order={order}{aid_str}"
-        f"  (full={results['v_full']:.4f}, "
-        f"empty={results['v_empty']:.4f})"
+        f"  (full={results['v_full']:.4f}, empty={results['v_empty']:.4f})"
         f"  → {plot_path.name}",
         flush=True,
     )
 
     return results
-
-
-# ---------------------------------------------------------------------------
-# InsDelTask — Task subclass
-# ---------------------------------------------------------------------------
 
 @dataclass
 class InsDelTask(Task):
@@ -795,7 +599,7 @@ class InsDelTask(Task):
                     img_feat = model.model.encode_image(img_tensor)
 
             img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
-            logits = (100.0 * img_feat @ text_feats.T).squeeze(0)
+            logits = (model.get_logit_scale() * img_feat @ text_feats.T).squeeze(0)
             probs  = logits.softmax(dim=-1)
 
             if self.explain_classes == "all":

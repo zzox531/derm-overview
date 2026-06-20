@@ -5,7 +5,6 @@ from typing import Callable, List, Optional
 from PIL import Image
 import torch
 
-
 @dataclass
 class SampleInput:
     """A single sample to explain."""
@@ -14,14 +13,12 @@ class SampleInput:
     identifier: str  # e.g. filename or dataset index
     metadata: dict = field(default_factory=dict)
 
-
 @dataclass
 class InferenceResult:
     sample: SampleInput
     target_class: Optional[str] = None
     logit: Optional[float] = None
     probability: Optional[float] = None
-
 
 class Task(ABC):
     """Yields (sample, prediction_info) tuples for the explanation loop."""
@@ -30,8 +27,6 @@ class Task(ABC):
     def iter_samples(self, model) -> List[InferenceResult]:
         ...
 
-
-# ---------- Caption-based task (e.g. Derm1M) ----------
 @dataclass
 class CaptionTask(Task):
     """Explain the alignment between image and its provided caption."""
@@ -40,8 +35,6 @@ class CaptionTask(Task):
     def iter_samples(self, model) -> List[InferenceResult]:
         return [InferenceResult(sample=s) for s in self.samples]
 
-
-# ---------- Zero-shot classification task (e.g. HAM10000) ----------
 @dataclass
 class ZeroShotTask(Task):
     """Run zero-shot classification, optionally explain all classes or top-k."""
@@ -52,6 +45,10 @@ class ZeroShotTask(Task):
     top_k: int = 3
 
     def iter_samples(self, model) -> List[InferenceResult]:
+        if not self.class_names:
+            raise ValueError(
+                "ZeroShotTask.class_names is empty — add at least one class name."
+            )
         device = model.device
         prompts = [self.prompt_template(c) for c in self.class_names]
 
@@ -59,7 +56,7 @@ class ZeroShotTask(Task):
         with torch.no_grad(), torch.autocast(device):
             if model.backend == "huggingface":
                 enc = model.tokenizer(
-                    prompts, return_tensors="pt", padding=True, truncation=True
+                    text=prompts, return_tensors="pt", padding=True, truncation=True
                 ).to(device)
                 text_feats = model.encode_text(enc)
             else:
@@ -80,19 +77,14 @@ class ZeroShotTask(Task):
             with torch.no_grad(), torch.autocast(device):
                 img_feat = model.encode_image(img_tensor)
                 img_feat = img_feat / img_feat.norm(dim=-1, keepdim=True)
-                logits = (100.0 * img_feat @ text_feats.T).squeeze(0)
+                logits = (model.get_logit_scale() * img_feat @ text_feats.T).squeeze(0)
                 probs = logits.softmax(dim=-1)
 
             # Decide which classes to explain
             if self.explain_classes == "all":
                 indices = range(len(self.class_names))
             elif self.explain_classes == "top1":
-                # pick the single top class only if its probability exceeds 0.5
-                max_prob, max_idx = torch.max(probs, dim=0)
-                if max_prob < 0.50:
-                    # skip this sample when the model isn't confident
-                    continue
-                indices = [int(max_idx.item())]
+                indices = [int(torch.argmax(probs).item())]
             else:  # topk
                 indices = torch.topk(probs, self.top_k).indices.tolist()
 

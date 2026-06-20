@@ -1,0 +1,89 @@
+2026-06-12 00:31:30,421  INFO      Starting inference run
+2026-06-12 00:31:30,421  INFO      Tasks        : ['caption', 'ins_del']
+2026-06-12 00:31:30,422  INFO      Output dir   : /home/ik448298/XAI/derm-overview/results
+2026-06-12 00:31:30,422  INFO      ============================================================
+2026-06-12 00:31:30,422  INFO      DEVICE CHECK
+2026-06-12 00:31:30,422  INFO      ============================================================
+2026-06-12 00:31:30,422  INFO      PyTorch version : 2.6.0+cu124
+2026-06-12 00:31:30,471  INFO      CUDA available  : YES  (1 device)
+2026-06-12 00:31:30,475  INFO        GPU 0: NVIDIA TITAN X (Pascal)  |  Compute 6.1  |  VRAM 11.9 GB
+2026-06-12 00:31:30,475  INFO      Active device   : cuda
+2026-06-12 00:31:30,475  INFO      ============================================================
+2026-06-12 00:31:42,524  WARNING   HF_TOKEN not set; private datasets may fail.
+['pad_images/PAT_304_4186_458.png', 'pad_images/PAT_230_1008_673.png', 'pad_images/PAT_110_397_52.png', 'pad_images/PAT_460_894_401.png', 'pad_images/PAT_100_393_595.png']
+['Actinic Keratosis', 'Actinic Keratosis', 'Actinic Keratosis', 'Basal Cell Carcinoma', 'Nevus']
+['daffodil_images/flip-1143__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg', 'daffodil_images/Crop-0350_0300lp-pigmentosus1__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Resize-450_400psoriatic-nail-010__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/flip-1sjs-ten-oral-7__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpeg', 'daffodil_images/Crop-100350_100300vitiligo-19__ProtectWyJQcm90ZWN0Il0_FocusFillWzI5NCwyMjIsIngiLDFd.jpg']
+['acne', 'hyperpigmentation', 'nail psoriasis', 'sjs ten', 'vitiligo']
+2026-06-12 00:31:42,531  INFO      Loading Derm1M dataset
+2026-06-12 00:31:42,894  WARNING   Using the latest cached version of the dataset since redlessone/Derm1M couldn't be found on the Hugging Face Hub
+2026-06-12 00:31:42,899  WARNING   Found the latest cached dataset configuration 'default' at /home/ik448298/.cache/huggingface/datasets/redlessone___derm1_m/default/0.0.0/3c1da1beeae41027b73d5aa8e9b4ec4c5dc83ad7 (last modified on Tue Jun  9 22:59:12 2026).
+2026-06-12 00:31:43,045  INFO      Caption task ready — 3 sample(s).
+2026-06-12 00:31:43,045  INFO      
+────────────────────────────────────────────────────────────
+2026-06-12 00:31:43,045  INFO      Loading model: hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,046  INFO        GPU memory before load: 0.00 GB allocated, 0.00 GB reserved
+2026-06-12 00:31:43,046  INFO      Parsing model identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,046  INFO      Attempting to load config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,189  INFO      Loaded model config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:43,325  INFO      Found default weights file on HF Hub: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:43,325  INFO      Instantiating model architecture: CLIP
+2026-06-12 00:31:44,930  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:45,096  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 00:31:45,096  INFO      Model hf-hub:redlessone/DermLIP_ViT-B-16 creation process complete.
+2026-06-12 00:31:45,096  INFO      Parsing tokenizer identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,097  INFO      Attempting to load config from hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,236  INFO      Using default SimpleTokenizer.
+2026-06-12 00:31:45,333  INFO      Parsing model identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,334  INFO      Attempting to load config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,476  INFO      Loaded model config from HF Hub: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:45,629  INFO      Found default weights file on HF Hub: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:45,630  INFO      Instantiating model architecture: CLIP
+2026-06-12 00:31:47,226  INFO      Loading full pretrained weights from: /home/ik448298/.cache/huggingface/hub/models--redlessone--DermLIP_ViT-B-16/snapshots/b7d427364122927b0d19faf45cec05eea5469226/open_clip_model.safetensors
+2026-06-12 00:31:47,389  INFO      Final image preprocessing configuration set: {'size': (224, 224), 'mode': 'RGB', 'mean': [0.48145466, 0.4578275, 0.40821073], 'std': [0.26862954, 0.26130258, 0.27577711], 'interpolation': 'bicubic', 'resize_mode': 'shortest', 'fill_color': 0}
+2026-06-12 00:31:47,389  INFO      Model hf-hub:redlessone/DermLIP_ViT-B-16 creation process complete.
+2026-06-12 00:31:47,705  INFO      Parsing tokenizer identifier. Schema: hf-hub, Identifier: redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:47,705  INFO      Attempting to load config from hf-hub:redlessone/DermLIP_ViT-B-16
+2026-06-12 00:31:47,845  INFO      Using default SimpleTokenizer.
+2026-06-12 00:31:47,928  INFO        Running caption task (budget=1024, ins_del -> results/ins_del/hf-hub_redlessone_DermLIP_ViT-B-16)
+
+--> derm_train_images/IIYI/27732_1.png
+Order:  2
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=0.1238  (full=0.2705, empty=0.2015)  → 27732_1_pred__curves.png
+n_players_image: 196
+n_players_text: 19
+iv.n_players: 215
+iv index: FWBII
+player index range in iv: 0 to 214
+Text:  ['the', 'user', 'reports', 'suffering', 'from', 'a', 'condition', 'for', 'two', 'weeks', ',', 'which', 'manife', 'sts', 'as', 'mild', 'it', 'ching', '.'] Word dimensions: [(np.float64(36.375), np.float64(23.0)), (np.float64(48.5), np.float64(23.0)), (np.float64(79.75), np.float64(23.0)), (np.float64(98.625), np.float64(23.0)), (np.float64(51.875), np.float64(23.0)), (np.float64(13.625), np.float64(23.0)), (np.float64(102.875), np.float64(23.0)), (np.float64(30.75), np.float64(23.0)), (np.float64(40.5), np.float64(23.0)), (np.float64(69.875), np.float64(23.0)), (np.float64(7.0), np.float64(23.0)), (np.float64(64.625), np.float64(23.0)), (np.float64(77.0), np.float64(23.0)), (np.float64(32.0), np.float64(23.0)), (np.float64(25.25), np.float64(23.0)), (np.float64(48.25), np.float64(23.0)), (np.float64(15.0), np.float64(23.0)), (np.float64(60.625), np.float64(23.0)), (np.float64(7.0), np.float64(23.0))]
+
+--> derm_train_images/IIYI/18845_2.png
+Order:  2
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=0.1090  (full=0.2609, empty=0.2322)  → 18845_2_pred__curves.png
+n_players_image: 196
+n_players_text: 5
+iv.n_players: 201
+iv index: FWBII
+player index range in iv: 0 to 200
+Text:  ['ker', 'at', 'osis', 'pil', 'aris'] Word dimensions: [(np.float64(35.0), np.float64(23.0)), (np.float64(22.375), np.float64(23.0)), (np.float64(43.125), np.float64(23.0)), (np.float64(26.625), np.float64(23.0)), (np.float64(40.75), np.float64(23.0))]
+
+--> derm_train_images/IIYI/20344_2.png
+Order:  2
+  [ins_del] Scoring deletion-MIF (order-2)...
+  [ins_del] Scoring insertion-MIF (order-2)...
+  [ins_del] order=2  AID=0.0078  (full=0.3140, empty=0.2193)  → 20344_2_pred__curves.png
+n_players_image: 196
+n_players_text: 29
+iv.n_players: 225
+iv index: FWBII
+player index range in iv: 0 to 224
+Text:  ['a', '2', '3', '-', 'year', '-', 'old', 'female', 'reports', 'trunk', 'pap', 'u', 'love', 'sic', 'ular', 'rash', 'accompanied', 'by', 'fever', '(', 'temperature', ':', '3', '7', '.', '8', '°', 'c', ').'] Word dimensions: [(np.float64(13.625), np.float64(23.0)), (np.float64(14.125), np.float64(23.0)), (np.float64(14.125), np.float64(23.0)), (np.float64(8.125), np.float64(23.0)), (np.float64(49.625), np.float64(23.0)), (np.float64(8.125), np.float64(23.0)), (np.float64(34.0), np.float64(23.0)), (np.float64(76.625), np.float64(23.0)), (np.float64(79.75), np.float64(23.0)), (np.float64(58.875), np.float64(23.0)), (np.float64(41.875), np.float64(23.0)), (np.float64(14.0), np.float64(23.0)), (np.float64(46.625), np.float64(23.0)), (np.float64(30.125), np.float64(23.0)), (np.float64(43.125), np.float64(23.0)), (np.float64(48.5), np.float64(23.0)), (np.float64(149.125), np.float64(23.0)), (np.float64(27.25), np.float64(23.0)), (np.float64(57.5), np.float64(23.0)), (np.float64(8.625), np.float64(23.0)), (np.float64(139.75), np.float64(23.0)), (np.float64(7.5), np.float64(23.0)), (np.float64(14.125), np.float64(23.0)), (np.float64(14.125), np.float64(23.0)), (np.float64(7.0), np.float64(23.0)), (np.float64(14.125), np.float64(23.0)), (np.float64(11.125), np.float64(23.0)), (np.float64(12.25), np.float64(23.0)), (np.float64(15.625), np.float64(23.0))]
+2026-06-12 00:44:42,795  INFO        Caption results saved → results/caption/hf-hub_redlessone_DermLIP_ViT-B-16
+2026-06-12 00:44:43,041  INFO        GPU memory after cleanup: 0.01 GB allocated, 0.02 GB reserved
+2026-06-12 00:44:43,041  INFO      
+All models done.
+2026-06-12 00:44:43,041  INFO        [hf-hub:redlessone/DermLIP_ViT-B-16]  caption: 3 item(s)
+2026-06-12 00:44:43,042  INFO      Inference run complete.

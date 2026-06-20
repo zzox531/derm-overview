@@ -1,0 +1,3 @@
+/home/ik448298/miniconda3/envs/dermlip_entropy/lib/python3.12/site-packages/open_clip/factory.py:450: UserWarning: QuickGELU mismatch between final model config (quick_gelu=False) and pretrained tag 'openai' (quick_gelu=True).
+  warnings.warn(
+slurmstepd: error: *** JOB 199055 ON asusgpu3 CANCELLED AT 2026-06-16T20:47:42 ***

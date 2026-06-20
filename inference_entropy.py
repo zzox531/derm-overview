@@ -42,14 +42,8 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-# from ibm_db import columns
 import pandas as pd
-# from pyparsing import col
 import torch
-
-# ---------------------------------------------------------------------------
-# Helpers (unchanged from original)
-# ---------------------------------------------------------------------------
 
 def setup_logging(log_dir: Path) -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -64,7 +58,6 @@ def setup_logging(log_dir: Path) -> logging.Logger:
         ],
     )
     return logging.getLogger(__name__)
-
 
 def cuda_check(logger: logging.Logger) -> torch.device:
     logger.info("=" * 60)
@@ -90,7 +83,6 @@ def cuda_check(logger: logging.Logger) -> torch.device:
     logger.info("=" * 60)
     return device
 
-
 def log_gpu_memory(logger: logging.Logger, label: str = "") -> None:
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024 ** 3
@@ -99,7 +91,6 @@ def log_gpu_memory(logger: logging.Logger, label: str = "") -> None:
             f"  GPU memory {label}: "
             f"{allocated:.2f} GB allocated, {reserved:.2f} GB reserved"
         )
-
 
 def make_output_dirs(base: Path, model_name: str, tasks: list[str]) -> dict[str, Path]:
     safe = model_name.replace("/", "_").replace(":", "_").replace(" ", "_")
@@ -110,86 +101,93 @@ def make_output_dirs(base: Path, model_name: str, tasks: list[str]) -> dict[str,
         dirs[task] = d
     return dirs
 
-
 def release_results(results: list) -> None:
     for item in results:
         iv = item.get("interaction_values")
         if iv is not None and hasattr(iv, "cpu"):
             item["interaction_values"] = iv.cpu()
 
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
 MODELS = [
-    # ── General VLMs ──────────────────────────────────────────────
-    {
-        "name": "ViT-B-16",
-        "backend": "open_clip",
-        "pretrained": "openai",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
-    },
-    {
-        "name": "ViT-B-16-SigLIP-256",
-        "backend": "open_clip",
-        "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
-        "hf_tokenizer_max_length": 64,
-        "pretrained": "webli",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
-    },
-    {
-        "name": "coca_ViT-B-32",
-        "backend": "open_clip",
-        "pretrained": "laion2b_s13b_b90k",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
-    },
+    # {
+    #     "name": "ViT-B-32",
+    #     "backend": "open_clip",
+    #     "pretrained": "openai",
+    #     "budget_caption": 2**15,
+    #     "budget_zeroshot": 2**15,
+    # },
+    # {
+    #     "name": "ViT-B-16",
+    #     "backend": "open_clip",
+    #     "pretrained": "openai",
+    #     "budget_caption": 2**15,
+    #     "budget_zeroshot": 2**15,
+    # },
+    # {
+    #     "name": "ViT-B-16-SigLIP-256",
+    #     "backend": "open_clip",
+    #     "hf_tokenizer_name": "timm/ViT-B-16-SigLIP-256",
+    #     "hf_tokenizer_max_length": 64,
+    #     "pretrained": "webli",
+    #     "budget_caption": 2**15,
+    #     "budget_zeroshot": 2**15,
+    # },
+    # {
+    #     "name": "coca_ViT-B-32",
+    #     "backend": "open_clip",
+    #     "pretrained": "laion2b_s13b_b90k",
+    #     "budget_caption": 2**15,
+    #     "budget_zeroshot": 2**15,
+    # },
 
-    # # ── Biomedical VLMs ───────────────────────────────────────────
-    {
-        "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        "backend": "open_clip",
-        "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
-        "budget_caption": 256,
-        "budget_zeroshot": 64,
-    },
+    # {
+    #     "name": "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+    #     "backend": "open_clip",
+    #     "hf_tokenizer_name": "microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
+    #     "budget_caption": 2**15,
+    #     "budget_zeroshot": 2**15,
+    # },
     {
         "name": "hf-hub:redlessone/DermLIP_ViT-B-16",
         "backend": "open_clip",
-        "budget_caption": 1024,
-        "budget_zeroshot": 256,
+        "budget_caption": 2**15,
+        "budget_zeroshot": 2**15,
     },
-    {
-        "name": "suinleelab/monet",
-        "backend": "huggingface",
-        "budget_zeroshot": 64,
-    },
+    # {
+    #     "name": "suinleelab/monet",
+    #     "backend": "huggingface",
+    #     "budget_zeroshot": 2**15,
+    # },
 ]
 
 DERM1M_ENTRIES = [
     {"filename": "pubmed/0d_59_PMC4458964_IJD_60_321e_g003_0.png", "index": 132556},
-    # {"filename": "IIYI/2281_1.png", "index": 126},
+    {"filename": "pubmed/d5_e8_PMC3291114_DRP2012_925023.004.png", "index": 37},
+    {"filename": "pubmed/00_39_PMC10381143_jimaging-09-00148-g011_1.jpg", "index": 151106},
+    {"filename": "youtube/XwA-mCenqm4_frame_481_0.jpg", "index": 141},
+    {"filename": "youtube/5Fe4aaMKiWE_frame_1051_0_0.jpg", "index": 1356},
+    {"filename": "IIYI/27732_1.png", "index": 3846},
+    {"filename": "IIYI/18845_2.png", "index": 8098},
+    {"filename": "IIYI/20344_2.png", "index": 21523},
 ]
 
 HAM7 = [
-    "melanocytic nevus",
-    "melanoma",
-    "basal cell carcinoma",
-    "benign keratosis",
-    "actinic keratosis",
-    "vascular lesion",
-    "dermatofibroma",
+    # "black dog next to a yellow hydrant"
+    # "melanocytic nevus",
+    # "melanoma",
+    # "basal cell carcinoma",
+    # "benign keratosis",
+    # "actinic keratosis",
+    # "vascular lesion",
+    # "dermatofibroma",
 ]
 
 HAM_IMAGES = [
-    # "ham_images/sample_0_melanocytic_Nevi.jpg",
-    # "ham_images/sample_1_melanocytic_Nevi.jpg",
-    # "ham_images/sample_2_melanoma.jpg",
-    # "ham_images/sample_3_melanoma.jpg",
-    # "ham_images/sample_4_melanocytic_Nevi.jpg",
+    # "sanity_check/dog_and_hydrant.jpg"
+    "ham_images/sample_0_melanocytic_Nevi.jpg",
+    "ham_images/sample_1_melanocytic_Nevi.jpg",
+    "ham_images/sample_2_melanoma.jpg",
+    "ham_images/sample_3_melanoma.jpg",
+    "ham_images/sample_4_melanocytic_Nevi.jpg",
 ]
 
 # PAD_ROOT = "pad_images"
@@ -203,10 +201,11 @@ PAD_LABELS = [
 ]
 
 PAD_IMAGES = [
-    # "pad_images/PAT_53_82_657.png"
-    ]
+    "pad_images/PAT_53_82_657.png"
+]
 
 PAD_TARGETS = []
+
 
 # DAFFODIL_ROOT = "daffodil_images"
 DAFFODIL_LABELS = [
@@ -240,10 +239,6 @@ def download_pad_daffodil ():
     print(DAFFODIL_IMAGES)
     print(DAFFODIL_TARGETS)
 
-# ---------------------------------------------------------------------------
-# Argument parsing
-# ---------------------------------------------------------------------------
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run CLIP-based dermatology inference (caption + zero-shot + ins/del)."
@@ -274,26 +269,16 @@ def parse_args() -> argparse.Namespace:
                         help="Root directory for all outputs (default: ./results).")
     return parser.parse_args()
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
 def main() -> None:
     args   = parse_args()
     tasks  = args.tasks
     do_ins_del = "ins_del" in tasks
 
-    # --- Logging ---
     logger = setup_logging(args.output_dir / "logs")
     logger.info("Starting inference run")
     logger.info(f"Tasks        : {tasks}")
     logger.info(f"Output dir   : {args.output_dir.resolve()}")
 
-    # --- CUDA check ---
-    device = cuda_check(logger)  # noqa: F841 (used inside loaded model)
-
-    # --- Lazy imports ---
     try:
         from huggingface_hub import login
         from datasets import load_dataset
@@ -308,9 +293,8 @@ def main() -> None:
         sys.exit(1)
 
     if do_ins_del:
-        from src.ins_del import InsDelTask  # noqa: F401 (used below)
+        from src.ins_del import InsDelTask
 
-    # --- HuggingFace login ---
     hf_token = os.getenv("HF_TOKEN")
     if not hf_token:
         logger.warning("HF_TOKEN not set; private datasets may fail.")
@@ -318,7 +302,6 @@ def main() -> None:
         login(token=hf_token)
         logger.info("Logged in to HuggingFace Hub.")
 
-    # --- Build tasks ---
     download_pad_daffodil()
     
     run_caption  = "caption"  in tasks
@@ -351,15 +334,15 @@ def main() -> None:
 
     if run_caption:
         if caption_samples is None or len(caption_samples) == 0:
-            logger.warning("Caption task requested but DERM1M_ENTRIES is empty — skipping.")
+            logger.warning("Caption task requested but DERM1M_ENTRIES is empty - skipping.")
         else:
             caption_task = CaptionTask(samples=caption_samples)
-            logger.info(f"Caption task ready — {len(caption_samples)} sample(s).")
+            logger.info(f"Caption task ready - {len(caption_samples)} sample(s).")
 
     zeroshot_tasks: list[tuple[str, ZeroShotTask]] = []
     if run_zeroshot:
         if ham_samples is None or len(ham_samples) == 0:
-            logger.warning("Zero-shot task requested but HAM_IMAGES is empty — skipping HAM zero-shot.")
+            logger.warning("Zero-shot task requested but HAM_IMAGES is empty - skipping HAM zero-shot.")
         else:
             zeroshot_tasks.append(
                 (
@@ -374,11 +357,11 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"HAM zero-shot task ready — {len(ham_samples)} sample(s), {len(HAM7)} classes."
+                f"HAM zero-shot task ready - {len(ham_samples)} sample(s), {len(HAM7)} classes."
             )
 
-        if pad_samples is None or len(pad_samples) == 0:
-            logger.warning("PAD zero-shot not loaded or empty — skipping PAD dataset.")
+        if pad_samples is None or len(pad_samples) == 0 or len(PAD_LABELS) == 0:
+            logger.warning("PAD zero-shot not loaded or class list empty - skipping PAD dataset.")
         else:
             zeroshot_tasks.append(
                 (
@@ -393,11 +376,11 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"PAD zero-shot task ready — {len(pad_samples)} sample(s), {len(PAD_LABELS)} classes."
+                f"PAD zero-shot task ready - {len(pad_samples)} sample(s), {len(PAD_LABELS)} classes."
             )
 
-        if daffodil_samples is None or len(daffodil_samples) == 0:
-            logger.warning("Daffodil zero-shot not loaded or empty — skipping Daffodil dataset.")
+        if daffodil_samples is None or len(daffodil_samples) == 0 or len(DAFFODIL_LABELS) == 0:
+            logger.warning("Daffodil zero-shot not loaded or class list empty - skipping Daffodil dataset.")
         else:
             zeroshot_tasks.append(
                 (
@@ -412,7 +395,7 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"Daffodil zero-shot task ready — {len(daffodil_samples)} sample(s), {len(DAFFODIL_LABELS)} classes."
+                f"Daffodil zero-shot task ready - {len(daffodil_samples)} sample(s), {len(DAFFODIL_LABELS)} classes."
             )
 
     if run_ins_del_standalone:
@@ -430,7 +413,7 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"Standalone ins/del (HAM/zero-shot) ready — {len(ham_samples)} sample(s).  "
+                f"Standalone ins/del (HAM/zero-shot) ready - {len(ham_samples)} sample(s).  "
                 f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
             )
 
@@ -446,7 +429,7 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"Standalone ins/del (PAD/zero-shot) ready — {len(pad_samples)} sample(s).  "
+                f"Standalone ins/del (PAD/zero-shot) ready - {len(pad_samples)} sample(s).  "
                 f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
             )
 
@@ -462,7 +445,7 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"Standalone ins/del (Daffodil/zero-shot) ready — {len(daffodil_samples)} sample(s).  "
+                f"Standalone ins/del (Daffodil/zero-shot) ready - {len(daffodil_samples)} sample(s).  "
                 f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
             )
 
@@ -475,7 +458,7 @@ def main() -> None:
                 )
             )
             logger.info(
-                f"Standalone ins/del (Derm1M/caption) ready — "
+                f"Standalone ins/del (Derm1M/caption) ready - "
                 f"{len(caption_samples)} sample(s).  "
                 f"MC budget={args.budget_ins_del}, p={args.ins_del_p}"
             )
@@ -487,7 +470,6 @@ def main() -> None:
             )
             sys.exit(1)
 
-    # --- Run models ---
     all_results: dict = {}
 
     for cfg in MODELS:
@@ -508,9 +490,6 @@ def main() -> None:
         # ins/del output dir (used when combined with caption/zeroshot)
         ins_del_dir = out_dirs.get("ins_del") if do_ins_del else None
 
-        # ------------------------------------------------------------------
-        # Caption task  (+ optional ins/del curves from the same IV)
-        # ------------------------------------------------------------------
         if caption_task is not None:
             logger.info(
                 f"  Running caption task (budget={budget_caption}"
@@ -529,9 +508,6 @@ def main() -> None:
             all_results[model_name]["caption"] = caption_results
             logger.info(f"  Caption results saved → {out_dirs['caption']}")
 
-        # ------------------------------------------------------------------
-        # Zero-shot task  (+ optional ins/del curves from the same IV)
-        # ------------------------------------------------------------------
         if zeroshot_tasks:
             for task_name, task in zeroshot_tasks:
                 logger.info(
@@ -551,9 +527,6 @@ def main() -> None:
                 all_results[model_name].setdefault("zeroshot", []).extend(zs_results)
                 logger.info(f"  Zero-shot results saved → {out_dirs['zeroshot']} ({task_name})")
 
-        # ------------------------------------------------------------------
-        # Standalone ins/del task(s) — run over HAM_IMAGES and/or DERM1M_ENTRIES
-        # ------------------------------------------------------------------
         if ins_del_tasks:
             combined_id_results = []
             for idx, id_task in enumerate(ins_del_tasks):
@@ -576,7 +549,6 @@ def main() -> None:
             all_results[model_name]["ins_del"] = combined_id_results
             logger.info(f"  Ins/del results saved → {out_dirs['ins_del']}")
 
-        # --- GPU cleanup ---
         del model
         gc.collect()
         if torch.cuda.is_available():
@@ -584,7 +556,6 @@ def main() -> None:
             torch.cuda.synchronize()
         log_gpu_memory(logger, "after cleanup")
 
-    # --- Summary ---
     logger.info("\nAll models done.")
     for model_name, task_dict in all_results.items():
         for task_name, result in task_dict.items():
@@ -598,7 +569,6 @@ def main() -> None:
                 logger.info(f"  [{model_name}]  {task_name}: {len(result)} item(s)")
 
     logger.info("Inference run complete.")
-
 
 if __name__ == "__main__":
     main()

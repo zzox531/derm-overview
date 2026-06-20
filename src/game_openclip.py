@@ -17,13 +17,10 @@ class OpenCLIPGame(Game):
         self.input_text = input_text
         self.batch_size = batch_size
 
-        # Find padding token dynamically 
         self.pad_token_id = self._find_pad_token()
 
-        # Run processor once to infer sequence sizing
         self.inputs = self._processor_function([input_image], [input_text])
 
-        # Safely extract image parameters (OpenCLIP often uses `model.visual.image_size`)
         self.image_size = self.inputs[0].shape[-1]
 
         self.patch_size = patch_size
@@ -31,32 +28,52 @@ class OpenCLIPGame(Game):
         self.grid_size = self.image_size // self.patch_size
         self.n_players_image = self.grid_size ** 2
         
-        # In open_clip, BOS and EOS wrap the tokens.
-        # We find the number of tokens by excluding padding and special tokens. 
         text_tensor = self.inputs[1][0]
-        # Count non-pad tokens subtracting 2 for BOS and EOS.
-        first_token = text_tensor[0].item()
-        last_non_pad = text_tensor[text_tensor != self.pad_token_id][-1].item()
-        has_bos = (first_token != self.pad_token_id) and (first_token == last_non_pad or 
-                self.text_tokenizer.tk.convert_ids_to_tokens([first_token])[0] in ('<s>', '<|startoftext|>') 
-                if hasattr(self.text_tokenizer, 'tk') else False)
-        has_eos = last_non_pad == self.pad_token_id  # already excluded, so check differently
-
-        # Simpler: just count non-pad, non-special tokens directly
         if hasattr(self.text_tokenizer, 'tk'):
             special_ids = set(self.text_tokenizer.tk.all_special_ids)
-            # Also get the id of standalone space token if it exists
             space_token_id = self.text_tokenizer.tk.convert_tokens_to_ids('▁')
             if space_token_id == self.text_tokenizer.tk.unk_token_id:
-                space_token_id = None  # '▁' not a standalone token in this vocab
-            self.n_players_text = sum(
-                1 for t in text_tensor.tolist()
-                if t != self.pad_token_id 
+                space_token_id = None
+            token_list = text_tensor.tolist()
+            content_indices = [
+                i for i, t in enumerate(token_list)
+                if t != self.pad_token_id
                 and t not in special_ids
                 and (space_token_id is None or t != space_token_id)
+            ]
+            self.has_bos = bool(content_indices) and content_indices[0] > 0
+            last_content = content_indices[-1] if content_indices else 0
+            self.has_eos = any(
+                t != self.pad_token_id for t in token_list[last_content + 1:]
             )
+            content_set = set(content_indices)
+            self._content_positions = content_indices
+            self._nonplayer_positions = [
+                i for i, t in enumerate(token_list)
+                if t != self.pad_token_id and i not in content_set
+            ]
+            
+            subwords = self.text_tokenizer.decode(token_list)
+            if len(subwords) == len(content_indices):
+                word_groups = []
+                current_group = []
+                for subword, pos in zip(subwords, content_indices):
+                    if subword.startswith('·'):
+                        current_group.append(pos)
+                    else:
+                        if current_group:
+                            word_groups.append(current_group)
+                        current_group = [pos]
+                if current_group:
+                    word_groups.append(current_group)
+            else:
+                word_groups = [[p] for p in content_indices]
+            self._word_groups = word_groups
+            self.n_players_text = len(word_groups)
         else:
             self.n_players_text = (text_tensor != self.pad_token_id).sum().item() - 2
+            self.has_bos = True
+            self.has_eos = True
 
         self.text_context_length = self.inputs[1].shape[-1]
         self.device = next(self.model.parameters()).device
@@ -78,6 +95,36 @@ class OpenCLIPGame(Game):
             verbose=False
         )
 
+    def _build_text_mask(self, n_coalitions: int, coalitions_text: torch.Tensor) -> torch.Tensor:
+        """Build text binary mask mapping coalition bits to exact token positions.
+
+        Each word player maps its coalition bit to all of its constituent
+        subword positions.  Non-player, non-padding positions (e.g. EOS) are
+        kept permanently on.
+        """
+        if hasattr(self, '_word_groups'):
+            mask = torch.zeros(n_coalitions, self.text_context_length)
+            for player_idx, positions in enumerate(self._word_groups):
+                bits = coalitions_text[:, player_idx].float()
+                for pos in positions:
+                    mask[:, pos] = bits
+            if self._nonplayer_positions:
+                nidx = torch.tensor(self._nonplayer_positions, dtype=torch.long)
+                mask[:, nidx] = 1.0
+            return mask.int()
+        parts = []
+        if self.has_bos:
+            parts.append(torch.ones(n_coalitions, 1))
+        parts.append(coalitions_text)
+        if self.has_eos:
+            parts.append(torch.ones(n_coalitions, 1))
+        pad_size = (self.text_context_length
+                    - self.n_players_text
+                    - int(self.has_bos)
+                    - int(self.has_eos))
+        parts.append(torch.zeros(n_coalitions, pad_size))
+        return torch.cat(parts, axis=1).int()
+
     def _find_pad_token(self):
         """Attempts to find the padding/empty token dynamically for open_clip tokenizers"""
         try:
@@ -85,9 +132,7 @@ class OpenCLIPGame(Game):
             if hasattr(self.text_tokenizer, 'vocab'):
                 return self.text_tokenizer.vocab.get('<pad>', 0)
             
-            # Alternatively encode empty string and find the token filling the tensor
             dummy_encoding = self.text_tokenizer([""])[0]
-            # Usually the last token in the fixed tensor length is the padding token
             return dummy_encoding[-1].item()
         except:
             return 0
@@ -108,13 +153,7 @@ class OpenCLIPGame(Game):
         coalitions_image = torch.from_numpy(coalitions[:, :self.n_players_image])
         coalitions_text = torch.from_numpy(coalitions[:, self.n_players_image:])
         
-        # [n_coalitions, text_context_length] -> pad with ones around the active tokens
-        text_binary_masks = torch.cat(
-            (torch.ones(n_coalitions, 1), coalitions_text, 
-             torch.ones(n_coalitions, 1), torch.zeros(n_coalitions, self.text_context_length - self.n_players_text - 2)), 
-            axis=1
-        ).int()
-        
+        text_binary_masks = self._build_text_mask(n_coalitions, coalitions_text)
         image_binary_masks = self._generate_image_binary_mask(coalitions_image)
         inputs_original = self._processor_function([self.input_image] * batch_size, [self.input_text] * batch_size)
 
@@ -137,19 +176,15 @@ class OpenCLIPGame(Game):
                 break 
             
             with torch.no_grad():
-                # Handling custom OpenCLIP forwarding structure 
                 model_out = self.model(*inputs)
                 
-                # CoCa returns a dict, standard CLIP returns a tuple
                 if isinstance(model_out, dict):
                     image_features = model_out["image_features"]
                     text_features = model_out["text_features"]
                     logit_scale = model_out.get("logit_scale", None)
                 else:
-                    # Some standard open_clip models might return more than 3, just grab the first 3
                     image_features, text_features, logit_scale = model_out[:3]
                 
-                # Normalize exactly like open_clip does 
                 image_features = image_features / image_features.norm(dim=1, keepdim=True)
                 text_features = text_features / text_features.norm(dim=1, keepdim=True)
 
@@ -169,12 +204,9 @@ class OpenCLIPGame(Game):
         n_coalitions_image = coalitions_image.shape[0]
         n_coalitions_text = coalitions_text.shape[0]
 
-        text_binary_masks = torch.cat(
-            (torch.ones(n_coalitions_text, 1), torch.from_numpy(coalitions_text), 
-             torch.ones(n_coalitions_text, 1), torch.zeros(n_coalitions_text, self.text_context_length - self.n_players_text - 2)), 
-            axis=1
-        ).int()
-        
+        text_binary_masks = self._build_text_mask(
+            n_coalitions_text, torch.from_numpy(coalitions_text)
+        )
         image_binary_masks = self._generate_image_binary_mask(torch.from_numpy(coalitions_image))
         inputs_original = self._processor_function([self.input_image] * batch_size, [self.input_text] * batch_size)
 
@@ -221,11 +253,9 @@ class OpenCLIPGame(Game):
                 else:
                     break
                 with torch.no_grad():
-                    # Handle models independently so CoCa's decoder doesn't crash on mismatched batches
                     image_out = self.model.encode_image(inputs[0])
                     text_out = self.model.encode_text(inputs[1])
                     
-                    # CoCa's encode_text might return a tuple, but standard CLIP doesn't always
                     image_features = image_out[0] if isinstance(image_out, tuple) else image_out
                     text_features = text_out[0] if isinstance(text_out, tuple) else text_out
                     
@@ -242,7 +272,7 @@ class OpenCLIPGame(Game):
                     else:
                         logits_per_image = image_features @ text_features.T
                         
-                outputs = logits_per_image.cpu() # In crossmodal we don't strictly diagonalize until output arrangement
+                outputs = logits_per_image.cpu()
                 coalitions_outputs_image.append(outputs)
             coalitions_outputs.append(torch.concat(coalitions_outputs_image, axis=1))
         coalitions_outputs = torch.concat(coalitions_outputs, axis=0)

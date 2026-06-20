@@ -16,7 +16,7 @@ def from_derm1m(ds, entries: List[dict]) -> List[SampleInput]:
         sample = ds["train"][e["index"]]
         samples.append(SampleInput(
             image=Image.open(path).convert("RGB"),
-            text=sample["caption"],
+            text=sample["truncated_caption"],
             identifier=str(path),
             metadata={"disease_label": sample.get("disease_label")},
         ))

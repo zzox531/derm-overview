@@ -6,6 +6,46 @@ import scipy as sp
 
 from . import sampler
 
+def _build_interaction_columns(coalition_chunk: np.ndarray,
+                               interactions: list[tuple[int, ...]]) -> np.ndarray:
+    """Build the regression-matrix block for a chunk of coalitions.
+
+    Returns array of shape (chunk_size, n_interactions) in float64.
+    """
+    n_rows = coalition_chunk.shape[0]
+    n_int = len(interactions)
+    out = np.empty((n_rows, n_int), dtype=np.float64)
+    for j, interaction in enumerate(interactions):
+        if len(interaction) == 0:
+            out[:, j] = 1.0
+        elif len(interaction) == 1:
+            out[:, j] = coalition_chunk[:, interaction[0]]
+        else:
+            # product over the (small) interaction set
+            col = coalition_chunk[:, interaction[0]].astype(np.float64, copy=True)
+            for p in interaction[1:]:
+                col *= coalition_chunk[:, p]
+            out[:, j] = col
+    return out
+
+
+def _accumulate_normal_equations(coalition_iter, value_iter, weight_iter,
+                                 interactions: list[tuple[int, ...]]):
+    """Accumulate XᵀWX and XᵀWy by streaming chunks. No giant matrix is kept."""
+    n_int = len(interactions)
+    XtWX = np.zeros((n_int, n_int), dtype=np.float64)
+    XtWy = np.zeros(n_int, dtype=np.float64)
+    for coal_chunk, val_chunk, w_chunk in zip(coalition_iter, value_iter, weight_iter):
+        X = _build_interaction_columns(coal_chunk, interactions)   # (chunk, n_int)
+        Wx = X * w_chunk[:, None]                                   # (chunk, n_int)
+        XtWX += X.T @ Wx
+        XtWy += Wx.T @ val_chunk
+        del X, Wx
+    return XtWX, XtWy
+
+
+def _solve_normal_equations(XtWX: np.ndarray, XtWy: np.ndarray) -> np.ndarray:
+    return np.linalg.lstsq(XtWX, XtWy, rcond=None)[0]
 
 class FIxLIP:
     """
@@ -172,24 +212,101 @@ class FIxLIP:
 
         return interaction_values
 
+    def _aggregate_crossmodal_streaming(
+        self,
+        image_coalitions: np.ndarray,   # (B_i, n_img) bool
+        text_coalitions:  np.ndarray,   # (B_t, n_txt) bool
+        image_weights:    np.ndarray,   # (B_i,)
+        text_weights:     np.ndarray,   # (B_t,)
+        values_matrix:    np.ndarray,   # (B_i, B_t) float
+        interaction_lookup,
+        chunk_rows: int,
+        total_budget: int,
+    ) -> shapiq.InteractionValues:
+        """Build XᵀWX and XᵀWy by streaming image×text pairs in chunks."""
+        n_img = image_coalitions.shape[1]
+        n_txt = text_coalitions.shape[1]
+        n_players = n_img + n_txt
+        B_i, B_t = image_coalitions.shape[0], text_coalitions.shape[0]
+
+        if interaction_lookup is None:
+            interaction_lookup = shapiq.utils.generate_interaction_lookup(
+                set(range(n_players)), min_order=0, max_order=self.max_order
+            )
+        interactions = list(interaction_lookup.keys())
+        n_int = len(interactions)
+
+        XtWX = np.zeros((n_int, n_int), dtype=np.float64)
+        XtWy = np.zeros(n_int, dtype=np.float64)
+
+        # Choose how many image rows per chunk so chunk has ~chunk_rows pairs
+        img_per_chunk = max(1, chunk_rows // max(1, B_t))
+
+        # Reusable buffer for the chunk's coalition matrix
+        # max chunk size in rows:
+        max_chunk = img_per_chunk * B_t
+        coal_buf = np.empty((max_chunk, n_players), dtype=bool)
+
+        for i_start in range(0, B_i, img_per_chunk):
+            i_end = min(i_start + img_per_chunk, B_i)
+            n_i = i_end - i_start
+            chunk_size = n_i * B_t
+
+            # Fill coalition matrix block: rows = image rows ⊗ text rows
+            # image part: repeat each image row B_t times
+            coal_buf[:chunk_size, :n_img] = np.repeat(
+                image_coalitions[i_start:i_end], B_t, axis=0
+            )
+            # text part: tile text matrix n_i times
+            coal_buf[:chunk_size, n_img:] = np.tile(text_coalitions, (n_i, 1))
+
+            # Weights and values for this block
+            w_block = np.outer(
+                image_weights[i_start:i_end], text_weights
+            ).reshape(-1)                                # (chunk_size,)
+            v_block = values_matrix[i_start:i_end].reshape(-1)  # (chunk_size,)
+
+            # Build interaction columns just for this block
+            X_block = _build_interaction_columns(coal_buf[:chunk_size], interactions)
+            Wx = X_block * w_block[:, None]
+            XtWX += X_block.T @ Wx
+            XtWy += Wx.T @ v_block
+            del X_block, Wx
+
+        values = _solve_normal_equations(XtWX, XtWy)
+
+        interaction_values = shapiq.InteractionValues(
+            values=values,
+            interaction_lookup=interaction_lookup,
+            baseline_value=values[interaction_lookup[()]],
+            n_players=n_players,
+            index="Moebius",
+            max_order=self.max_order,
+            min_order=0,
+            estimated=2 ** n_players > (B_i * B_t),
+            estimation_budget=B_i * B_t,
+        )
+        interaction_values.index = "FSII" if self.mode.lower() == "shapley" else "FWBII"
+        return interaction_values
 
     def approximate_crossmodal(
-        self, 
-        game, 
-        budget=None, 
-        budget_image=None, 
-        budget_text=None, 
-        interaction_lookup=None, 
-        time_game=False, 
+        self,
+        game,
+        budget=None,
+        budget_image=None,
+        budget_text=None,
+        interaction_lookup=None,
+        time_game=False,
         approximation_type="original",
-        **kwargs
+        chunk_rows: int = 8192,            # NEW: streaming chunk size
+        **kwargs,
     ):
         if not self.is_crossmodal:
-            raise ValueError("Crossmodal approximation is not initialized."+\
-                             "Pass `n_players_image` and `n_players_text` to FIxLIP().")
+            raise ValueError("Crossmodal approximation is not initialized. "
+                            "Pass `n_players_image` and `n_players_text` to FIxLIP().")
         if interaction_lookup is not None and approximation_type != "original":
             raise ValueError("`interaction_lookup` is only used for `approximation_type='original'`.")
-        # split budget based on n_players_text and n_players_image
+
         if budget is not None:
             if budget < 4:
                 raise ValueError("`budget` should be at least 4.")
@@ -198,46 +315,69 @@ class FIxLIP:
             raise ValueError("Pass either `budget` or `budget_image` and `budget_text`.")
         else:
             budget = budget_image * budget_text
-        # sample coalitions from both modalities
+
+        # 1) Sample image / text coalitions (small)
         self.sampler_image.sample(budget_image)
         self.sampler_text.sample(budget_text)
-        # evaluate coalition values efficiently with _crossmodal (un-normalized game call)
+
+        # 2) Evaluate game on the crossmodal product (game decides its own batching)
         if time_game:
             self.time_game_start = time.time()
         coalition_values_crossmodal = game.value_function_crossmodal(
             coalitions_image=self.sampler_image.coalitions_matrix,
-            coalitions_text=self.sampler_text.coalitions_matrix
+            coalitions_text=self.sampler_text.coalitions_matrix,
         )
         if time_game:
             self.time_game_end = time.time()
-        coalition_values_crossmodal = coalition_values_crossmodal - game.normalization_value
-        # reshape inputs to aggregate()
-        coalition_values = coalition_values_crossmodal.reshape(-1)
-        coalitions_matrix = np.concatenate([
-            np.repeat(self.sampler_image.coalitions_matrix, budget_text, axis=0), 
-            np.tile(self.sampler_text.coalitions_matrix, (budget_image, 1))
-        ], axis=1)
+        coalition_values_crossmodal = (
+            coalition_values_crossmodal - game.normalization_value
+        )
+        # Shape: (budget_image, budget_text)
+        coalition_values_crossmodal = np.asarray(coalition_values_crossmodal,
+                                                dtype=np.float64).reshape(
+            budget_image, budget_text
+        )
+
         if approximation_type == "original":
-            # set kernel weights for image and text using banzhaf
-            kernel_weights_image = np.array([self.p ** k * ((1 - self.p) ** (self.n_players_image - k)) \
-                                                for k in range(self.n_players_image + 1)])
-            kernel_weights_text = np.array([self.p ** k * ((1 - self.p) ** (self.n_players_text - k)) \
-                                                for k in range(self.n_players_text + 1)])
-            image_regression_weights = get_regression_weights(self.sampler_image, kernel_weights_image)
-            text_regression_weights = get_regression_weights(self.sampler_text, kernel_weights_text)
-            regression_weights = np.outer(
-                image_regression_weights,
-                text_regression_weights
-            ).reshape(-1)
-            # aggregate coalition values with aggregate()
-            interaction_values = self.aggregate(
-                coalition_matrix=coalitions_matrix, 
-                regression_weights=regression_weights,
-                coalition_values=coalition_values,
-                interaction_lookup=interaction_lookup
+            # 3) Per-modality kernel + regression weights (1D, tiny)
+            kernel_weights_image = np.array(
+                [self.p ** k * ((1 - self.p) ** (self.n_players_image - k))
+                for k in range(self.n_players_image + 1)]
             )
+            kernel_weights_text = np.array(
+                [self.p ** k * ((1 - self.p) ** (self.n_players_text - k))
+                for k in range(self.n_players_text + 1)]
+            )
+            image_regression_weights = get_regression_weights(
+                self.sampler_image, kernel_weights_image
+            )  # shape (budget_image,)
+            text_regression_weights = get_regression_weights(
+                self.sampler_text, kernel_weights_text
+            )  # shape (budget_text,)
+
+            return self._aggregate_crossmodal_streaming(
+                image_coalitions=self.sampler_image.coalitions_matrix,
+                text_coalitions=self.sampler_text.coalitions_matrix,
+                image_weights=image_regression_weights,
+                text_weights=text_regression_weights,
+                values_matrix=coalition_values_crossmodal,
+                interaction_lookup=interaction_lookup,
+                chunk_rows=chunk_rows,
+                total_budget=budget,
+            )
+
         elif approximation_type == "proxyshap":
-            # cf. https://github.com/mmschlk/shapiq/blob/ec73ba9746c367f4407603d32a4d587c7e4548f5/src/shapiq/approximator/proxy/proxyshap.py#L239-L285
+            # Proxyshap path: we still need a coalition matrix for XGBoost.fit.
+            # Build it lazily in chunks and stack — but XGBoost itself needs the
+            # full matrix, so this path is inherently memory-bound. Keep as-is.
+            coalition_values = coalition_values_crossmodal.reshape(-1)
+            coalitions_matrix = np.concatenate(
+                [
+                    np.repeat(self.sampler_image.coalitions_matrix, budget_text, axis=0),
+                    np.tile(self.sampler_text.coalitions_matrix, (budget_image, 1)),
+                ],
+                axis=1,
+            )
             from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
             from xgboost import XGBRegressor
             defaults = {
@@ -245,14 +385,14 @@ class FIxLIP:
                 "learning_rate": 0.05,
                 "max_depth": 3,
                 "reg_lambda": 5,
-                "random_state": self.random_state
+                "random_state": self.random_state,
             }
             defaults.update(kwargs)
             proxy_model = XGBRegressor(**defaults)
             proxy_model.fit(coalitions_matrix, coalition_values)
             explainer = InterventionalTreeExplainer(
                 proxy_model,
-                data=np.zeros((1, self.n_players)),  # reference data for boolean tree
+                data=np.zeros((1, self.n_players)),
                 class_index=None,
                 index="FBII" if self.mode.lower() == "banzhaf" else "FSII",
                 max_order=self.max_order,
@@ -265,16 +405,13 @@ class FIxLIP:
                 max_order=self.max_order,
                 n_players=self.n_players,
                 min_order=0,
-                estimated=2**self.n_players > budget,
+                estimated=2 ** self.n_players > budget,
                 estimation_budget=budget,
                 baseline_value=float(game.normalization_value),
             )
-            interaction_values[()] = float(game.normalization_value)  # Ensure empty coalition value is correct
-            # Ensure that all values are present and pad with zeros if necessary.
+            interaction_values[()] = float(game.normalization_value)
             interaction_values = populate_sparse_iv_with_zeros(interaction_values)
-
-        return interaction_values
-
+            return interaction_values
 
     def aggregate(
         self,

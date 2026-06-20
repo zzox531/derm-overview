@@ -1,0 +1,9 @@
+Using the latest cached version of the dataset since redlessone/Derm1M couldn't be found on the Hugging Face Hub
+Found the latest cached dataset configuration 'default' at /home/ik448298/.cache/huggingface/datasets/redlessone___derm1_m/default/0.0.0/3c1da1beeae41027b73d5aa8e9b4ec4c5dc83ad7 (last modified on Tue Jun  9 22:59:12 2026).
+/home/ik448298/XAI/derm-overview/src/utils.py:42: UserWarning: Index `FWBII` is not a valid interaction index. Valid indices are: SII, BII, CHII, Co-Moebius, SGV, BGV, CHGV, IGV, EGV, k-SII, STII, FSII, kADD-SHAP, FBII, SV, BV, JointSV, Moebius, ELC.
+  return shapiq.InteractionValues(
+/home/ik448298/miniconda3/envs/dermlip_entropy/lib/python3.12/site-packages/shapiq/interaction_values.py:707: UserWarning: Index `FWBII` is not a valid interaction index. Valid indices are: SII, BII, CHII, Co-Moebius, SGV, BGV, CHGV, IGV, EGV, k-SII, STII, FSII, kADD-SHAP, FBII, SV, BV, JointSV, Moebius, ELC.
+  return InteractionValues(
+/home/ik448298/XAI/derm-overview/src/utils.py:175: UserWarning: Index `FWBII` is not a valid interaction index. Valid indices are: SII, BII, CHII, Co-Moebius, SGV, BGV, CHGV, IGV, EGV, k-SII, STII, FSII, kADD-SHAP, FBII, SV, BV, JointSV, Moebius, ELC.
+  return shapiq.InteractionValues(
+slurmstepd: error: *** JOB 195976 ON asusgpu3 CANCELLED AT 2026-06-12T00:24:39 DUE TO TIME LIMIT ***

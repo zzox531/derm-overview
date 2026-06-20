@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/ik448298/XAI/derm-overview/inference_entropy.py", line 611, in <module>
+    main()
+  File "/home/ik448298/XAI/derm-overview/inference_entropy.py", line 311, in main
+    from src.runner import explain
+  File "/home/ik448298/XAI/derm-overview/src/runner.py", line 37
+    batch_size=batch_size,
+    ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: keyword argument repeated: batch_size
