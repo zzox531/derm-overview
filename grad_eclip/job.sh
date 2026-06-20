@@ -15,4 +15,4 @@ source ~/miniconda3/etc/profile.d/conda.sh   # adjust path if needed
 conda activate dermlip_entropy
 
 # python3 mult_map.py ham --model hf-hub:redlessone/DermLIP_ViT-B-16
-python3 gen_map_vit-b32.py ham
+python3 gen_map_dermlip.py pad
